@@ -1,19 +1,8 @@
-# from src.logger import logging
-from src.exception import TMSException
-import sys
-from config.settings import Settings
+from fastapi import FastAPI
+from src.api.routes import master_routes
 
 
-def main():
-    try:
-        settings = Settings()
-        
-        print(settings.project_root_path)
-        print(settings.client_data_name)
-        
-        
-    except Exception as e:
-        raise TMSException(e, sys)
+app = FastAPI()
 
-if __name__ == "__main__":
-    main()
+
+app.include_router(master_routes.master_router)
