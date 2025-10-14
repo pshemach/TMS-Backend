@@ -6,5 +6,6 @@ seaborn
 geopy
 folium
 python-dotenv
+from_root
 fastapi
 uvicorn
