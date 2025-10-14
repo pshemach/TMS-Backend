@@ -1,0 +1,10 @@
+ortools
+numpy
+pandas
+matplotlib
+seaborn
+geopy
+folium
+python-dotenv
+fastapi
+uvicorn

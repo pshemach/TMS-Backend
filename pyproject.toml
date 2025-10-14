@@ -4,4 +4,15 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "fastapi>=0.119.0",
+    "folium>=0.20.0",
+    "geopy>=2.4.1",
+    "matplotlib>=3.10.7",
+    "numpy>=2.3.3",
+    "ortools>=9.14.6206",
+    "pandas>=2.3.3",
+    "python-dotenv>=1.1.1",
+    "seaborn>=0.13.2",
+    "uvicorn>=0.37.0",
+]
