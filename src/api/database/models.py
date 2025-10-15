@@ -1,11 +1,11 @@
 from sqlalchemy import Column, Integer, String, Float
 from .database import Base
 
-class MasterGPS(Base):
+class GPSMaster(Base):
     __tablename__ = 'master_gps'
     
     id = Column(Integer, primary_key=True, index=True)
-    shop_code = Column(String)
+    shop_code = Column(String, unique=True, nullable=False)
     location = Column(String)
     address = Column(String)
     brand = Column(String)
