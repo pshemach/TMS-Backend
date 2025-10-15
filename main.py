@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from src.api.routes import master_routes
-from src.api.database import models
-from src.api.database.database import engine
+from src.database import models
+from src.database.database import engine
 
 
 app = FastAPI()
