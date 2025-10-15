@@ -17,5 +17,6 @@ dependencies = [
     "pydantic>=2.12.1",
     "python-dotenv>=1.1.1",
     "seaborn>=0.13.2",
+    "sqlalchemy>=2.0.44",
     "uvicorn>=0.37.0",
 ]

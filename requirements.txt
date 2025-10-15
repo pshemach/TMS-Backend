@@ -10,3 +10,4 @@ from_root
 fastapi
 uvicorn
 pydantic
+sqlalchemy
