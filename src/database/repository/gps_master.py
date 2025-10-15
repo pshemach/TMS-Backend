@@ -1,6 +1,6 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
-from src.api.database import models
+from src.database import models
 from src.api import schemas
 
 

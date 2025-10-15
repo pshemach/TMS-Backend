@@ -1,8 +1,8 @@
 from fastapi import APIRouter, status, Depends
 from sqlalchemy.orm import Session
-from src.api.database.repository import gps_master
+from src.database.repository import gps_master
 from ..schemas import ShopRequest
-from ..database import database
+from src.database import database
 
 
 get_db = database.get_db
