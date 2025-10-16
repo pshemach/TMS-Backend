@@ -38,7 +38,6 @@ def create(request: schemas.ShopRequest, db: Session):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE, detail=f'shop with {request.dict()} not created: {e}')
     
-    
 def delete(id: int, db: Session):
     try:
         shop = db.query(models.GPSMaster).filter(models.GPSMaster.id == id)
