@@ -12,6 +12,8 @@ class GPSMaster(Base):
     district = Column(String)
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
+    matrix_status = Column(String, default=None)
+    
     
     __table_args__ = (
         UniqueConstraint('shop_code', 'brand', name='_unique_shop'),

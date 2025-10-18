@@ -1,7 +1,7 @@
 import pandas as pd 
 from src.database.database import engine
 from config.settings import Settings
-
+from src.utils.master_utils import get_osrm_data
 
 class MasterManager:
     def __init__(self, configs=None):

@@ -21,6 +21,10 @@ class Settings:
         self.client_data_path = self.data_folder_path / self.client_name
         self.master_folder_path = self.client_data_path / self.master_folder_name
         
+        # Matrix paths 
+        self.distance_matrix_file_path = self.master_folder_path / self.distance_matrix_file_name
+        self.duration_matrix_file_path = self.master_folder_path / self.duration_matrix_file_name
+        
         # Output folder for artifacts 
         self.outputs_folder_name = os.getenv('OUTPUT_FOLDER', 'outputs')
         self.outputs_folder_path = self.client_data_path / self.outputs_folder_name

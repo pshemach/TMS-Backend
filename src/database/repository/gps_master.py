@@ -29,7 +29,8 @@ def create(request: schemas.ShopRequest, db: Session):
             brand=request.brand,
             district=request.district, 
             latitude=request.latitude,
-            longitude=request.longitude
+            longitude=request.longitude,
+            matrix_status='to_update'
             )
         db.add(new_shop)
         db.commit()
@@ -57,16 +58,34 @@ def update(id: int, request: schemas.ShopRequest, db: Session):
         if not shop.first():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"shop with id {id} not found")
 
-        shop.update({
-            models.GPSMaster.shop_code : request.shop_code,
-            models.GPSMaster.location : request.location,
-            models.GPSMaster.address : request.address,
-            models.GPSMaster.brand : request.brand,
-            models.GPSMaster.district : request.district,
-            models.GPSMaster.latitude : request.latitude,
-            models.GPSMaster.longitude : request.longitude
-            
-        })
+        gps_changed = (
+        shop.first().latitude != request.latitude or 
+        shop.first().longitude != request.longitude
+        )
+        current_status = shop.first().matrix_status
+        
+        if gps_changed:
+            shop.update({
+                models.GPSMaster.shop_code : request.shop_code,
+                models.GPSMaster.location : request.location,
+                models.GPSMaster.address : request.address,
+                models.GPSMaster.brand : request.brand,
+                models.GPSMaster.district : request.district,
+                models.GPSMaster.latitude : request.latitude,
+                models.GPSMaster.longitude : request.longitude,
+                models.GPSMaster.matrix_status : 'to_update'
+            })
+        else:
+            shop.update({
+                models.GPSMaster.shop_code : request.shop_code,
+                models.GPSMaster.location : request.location,
+                models.GPSMaster.address : request.address,
+                models.GPSMaster.brand : request.brand,
+                models.GPSMaster.district : request.district,
+                models.GPSMaster.latitude : request.latitude,
+                models.GPSMaster.longitude : request.longitude,
+                models.GPSMaster.matrix_status : current_status
+            })
         db.commit()
         return shop.first()
     except Exception as e:
