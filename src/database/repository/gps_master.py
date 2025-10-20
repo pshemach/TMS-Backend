@@ -30,7 +30,7 @@ def create(request: schemas.ShopRequest, db: Session):
             district=request.district, 
             latitude=request.latitude,
             longitude=request.longitude,
-            matrix_status='to_update'
+            matrix_status='to_create'
             )
         db.add(new_shop)
         db.commit()
