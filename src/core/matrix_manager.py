@@ -93,10 +93,11 @@ class DistanceMatrixManager:
         
     def _delete_shop_distances(self, shop_id: int, db: Session) -> None:
         """Delete all distance entries for a specific shop"""
-        db.query(MatrixMaster).filter(
+        entry = db.query(MatrixMaster).filter(
             (MatrixMaster.shop_id_1 == shop_id )|
             (MatrixMaster.shop_id_2 == shop_id)
-        ).delete(synchronize_session=False)
+        )
+        entry.delete(synchronize_session=False)
         db.commit()
         
     def _add_shop_to_matrix_threaded(self, new_shop: GPSMaster, existing_shops: List[GPSMaster] ) -> int:
