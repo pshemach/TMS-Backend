@@ -215,4 +215,123 @@ class DistanceMatrixManager:
             print(f"  ✓ Added: {scode1} ↔ {scode2} = {distance_data['distance_km']:.2f} km")
         db.commit()
 
+    def get_distance(self, shop_id_1: int, shop_id_2: int) -> Tuple[float, float]:
+        """
+        Get distance between two shops from database.
+        Handles both A→B and B→A by checking in correct order.
     
+        Returns: (distance_km, time_minutes) or (None, None) if not found
+        """
+        
+        if shop_id_1 == shop_id_2:
+            return 0.0, 0.0
+        
+        sid1 = min(shop_id_1, shop_id_2)
+        sid2 = max(shop_id_1, shop_id_2)
+        
+        result = self.db.query(MatrixMaster).filter(
+            MatrixMaster.shop_id_1 == sid1 ,
+            MatrixMaster.shop_id_2 == sid2
+        ).first()
+        
+        if result:
+            return result.distance_km, result.time_minutes
+        
+        return None, None
+    
+    def get_matrix_for_shops(self, shop_ids:List[int]) -> Dict[Tuple[int, int], Dict]:
+        """
+        Get distance matrix for specific shop IDs.
+        Returns dictionary with (shop_id_1, shop_id_2) as key.
+        Automatically handles symmetry: if you query B→A, returns A→B data.
+        
+        Returns: {(shop_id_1, shop_id_2): {'distance': X, 'time': Y}}
+        """
+        
+        n = len(shop_ids)
+        distance_dict = {}
+    
+        # Add zero distances for same shop
+        for shop_id in shop_ids:
+            distance_dict[(shop_id, shop_id)] = {'distance': 0.0, 'time': 0.0}
+    
+        # Query all distances for these shops
+        for i, shop_id_1 in enumerate(shop_ids):
+            for shop_id_2 in shop_ids[i+1:]:
+                distance, time = self.get_distance(shop_id_1, shop_id_2)
+    
+                if distance is not None:
+
+                    distance_dict[(shop_id_1, shop_id_2)] = {
+                        'distance': distance, 'time': time
+                    }
+                    
+                    distance_dict[(shop_id_2, shop_id_1)] = {
+                        'distance': distance, 'time': time
+                    }
+                       
+        return distance_dict
+    
+    def get_distance_matrix_as_array(self, shop_ids: List[int]) -> List[List[float]]:
+        """
+        Get distance matrix as 2D array.
+        
+        Returns: 2D list where matrix[i][j] = distance from shop_ids[i] to shop_ids[j]
+        """
+        
+        n = len(shop_ids)
+        
+        matrix = [[0.0 for _ in range(n)] for _ in range(n)]
+        
+        distance_dict = self.get_matrix_for_shops(shop_ids)
+     
+        for i, shop_id_1 in enumerate(shop_ids):
+            for j, shop_id_2 in enumerate(shop_ids):
+                if (shop_id_1, shop_id_2) in distance_dict:
+                    matrix[i][j] = distance_dict[(shop_id_1, shop_id_2)]['distance']
+                    
+        return matrix
+    
+    
+    def get_time_matrix_as_array(self, shop_ids: List[int]) -> List[List[float]]:
+        """
+        Get time matrix as 2D array.
+        
+        Returns: 2D list where matrix[i][j] = time from shop_ids[i] to shop_ids[j]
+        """
+        n = len(shop_ids)
+        
+        matrix = [[0.0 for _ in range(n)] for _ in range(n)]
+        
+        distance_dict = self.get_matrix_for_shops(shop_ids)
+        
+        for i, shop_id_1 in enumerate(shop_ids):
+            for j, shop_id_2 in enumerate(shop_ids):
+                if (shop_id_1, shop_id_2) in distance_dict:
+                    matrix[i][j] = distance_dict[(shop_id_1, shop_id_2)]['time']
+                    
+        return matrix
+    
+    def get_matrix_statistics(self) -> Dict:
+        """Get statistics about the current matrix"""
+        total_shops = self.db.query(GPSMaster).filter(
+            GPSMaster.matrix_status == 'updated'
+        ).count()
+        
+        pending_shops = self.db.query(GPSMaster).filter(
+            (GPSMaster.matrix_status == 'to_update') |
+            (GPSMaster.matrix_status == 'to_create')
+        ).count()
+        
+        total_distances = self.db.query(MatrixMaster).count()
+        
+        # Expected distances for upper triangle: n*(n-1)/2
+        expected_distances = (total_shops * (total_shops - 1)) / 2 if total_shops > 0 else 0
+        
+        return {
+            'total_shops_in_matrix': total_shops,
+            'pending_updates': pending_shops,
+            'total_distances_stored': total_distances,
+            'expected_distances': int(expected_distances),
+            'matrix_completeness': f"{(total_distances/expected_distances*100):.1f}%" if expected_distances > 0 else "N/A"
+        }
