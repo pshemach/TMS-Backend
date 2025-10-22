@@ -81,7 +81,7 @@ class VehicleConstrain(Base):
     payload = Column(Float, default=1000.0)  # kg
     volume = Column(Float, default=10.0)  # cubic meters
     time_window = Column(String, default='08:00-18:00')
-    max_distance = Column(Float, default=200.0)  # km
+    max_distance = Column(Float, default=1200.0)  # km
     max_visits = Column(Integer, default=12)
     
     # Define one-to-one relationship with Vehicles
