@@ -78,11 +78,12 @@ class VehicleConstrain(Base):
     vehicle_name = Column(String, nullable=False)
     fleet = Column(String, nullable=False)
     type = Column(String, nullable=False)
+    days = Column(Integer, default=1)
     payload = Column(Float, default=1000.0)  # kg
     volume = Column(Float, default=10.0)  # cubic meters
-    time_window = Column(String, default='08:00-18:00')
+    time_window = Column(String, default="00:00-23:59")
     max_distance = Column(Float, default=1200.0)  # km
-    max_visits = Column(Integer, default=12)
+    max_visits = Column(Integer, default=15)
     
     # Define one-to-one relationship with Vehicles
     vehicle = relationship("Vehicles", back_populates="constraint")

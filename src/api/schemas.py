@@ -12,6 +12,7 @@ class ShopRequest(BaseModel):
 
 
 class VehicleConstrainBase(BaseModel):
+    days: Optional[int] = None
     payload: Optional[float] = None
     volume: Optional[float] = None
     time_window: Optional[str] = None
@@ -42,7 +43,7 @@ class VehicleConstrainResponse(VehicleConstrainBase):
 class VehicleBase(BaseModel):
     vehicle_name: str
     type: str
-    status: str
+    status: str = 'available'
     location: Optional[str] = None
 
 class VehicleRequest(VehicleBase):

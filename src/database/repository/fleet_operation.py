@@ -1,12 +1,12 @@
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from src.database import models
 from src.api import schemas
 
 def all_fleets(db: Session):
     """Retrieve all fleets from the database."""
     try:
-        fleets = db.query(models.Fleets).all()
+        fleets = db.query(models.Fleets).options(joinedload(models.Fleets.vehicles).joinedload(models.Vehicles.constraint)).all()
         return fleets
     except Exception as e:
         raise HTTPException(
@@ -17,7 +17,7 @@ def all_fleets(db: Session):
 def get_fleet(id: int, db: Session):
     """Retrieve a fleet by ID."""
     try:
-        fleet = db.query(models.Fleets).filter(models.Fleets.id == id).first()
+        fleet = fleet = db.query(models.Fleets).options(joinedload(models.Fleets.vehicles).joinedload(models.Vehicles.constraint)).filter(models.Fleets.id == id).first()
         if not fleet:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
