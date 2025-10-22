@@ -40,4 +40,3 @@ class Settings:
         self.master_folder_path.mkdir(parents=True, exist_ok=True)
         self.outputs_folder_path.mkdir(parents=True, exist_ok=True)
         self.database_folder_path.mkdir(parents=True, exist_ok=True)
-        
