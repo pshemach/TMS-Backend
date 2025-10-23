@@ -7,7 +7,7 @@ from src.api import schemas
 def get_vehicle(id:int, db: Session):
     "Retrieve a vehicle by its ID"
     try:
-        vehicle = db.query(models.Vehicles).options(joinedload(models.VehicleConstrain)).filter(models.Vehicles.id == id).first()
+        vehicle = db.query(models.Vehicles).filter(models.Vehicles.id == id).first()
         if not vehicle:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
