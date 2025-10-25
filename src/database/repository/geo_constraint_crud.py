@@ -1,6 +1,7 @@
 from typing import Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.exc import IntegrityError
 from src.database import models
 from src.api import schemas
 from .shops_curd import shop_coords, get_shop   # <-- reuse
@@ -24,27 +25,43 @@ def create_geo_constraint(request: schemas.GeoConstraintCreate, db: Session) -> 
     if start.id == end.id:
         raise HTTPException(status_code=400, detail="Start and end shop must be different")
 
-    # ---- vehicle (optional) ------------------------------------
+    # --- BLOCK: only one unassigned route per (start, end) ---
+    if request.vehicle_id is None:
+        existing_unassigned = db.query(models.GeoConstraint).filter(
+            models.GeoConstraint.start_shop_id == start.id,
+            models.GeoConstraint.end_shop_id == end.id,
+            models.GeoConstraint.vehicle_id.is_(None)
+        ).first()
+        if existing_unassigned:
+            raise HTTPException(
+                status_code=400,
+                detail="This route (start → end) already exists without a vehicle."
+            )
+
+    # --- Validate vehicle if assigned ---
     if request.vehicle_id:
         vehicle = db.query(models.Vehicles).filter(models.Vehicles.id == request.vehicle_id).first()
         if not vehicle:
             raise HTTPException(status_code=404, detail=f"Vehicle {request.vehicle_id} not found")
-        # one-to-one guard
-        existing = db.query(models.GeoConstraint).filter(models.GeoConstraint.vehicle_id == request.vehicle_id).first()
-        if existing:
-            raise HTTPException(status_code=400, detail="Vehicle already assigned to a geo-constraint")
 
     geo = models.GeoConstraint(
         start_shop_id=start.id,
         end_shop_id=end.id,
         vehicle_id=request.vehicle_id,
     )
-    db.add(geo)
-    db.commit()
-    db.refresh(geo)
-    return geo
 
-
+    try:
+        db.add(geo)
+        db.commit()
+        db.refresh(geo)
+        return geo
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="This vehicle is already assigned to this exact route (start → end)."
+        )
+        
 def get_geo_constraint(id: int, db: Session) -> models.GeoConstraint:
     geo = (
         db.query(models.GeoConstraint)

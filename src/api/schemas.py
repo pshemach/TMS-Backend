@@ -38,7 +38,7 @@ class VehicleConstrainResponse(VehicleConstrainBase):
     type: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class VehicleBase(BaseModel):
     vehicle_name: str
@@ -63,7 +63,7 @@ class VehicleResponse(VehicleBase):
     constraint: Optional[VehicleConstrainResponse] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class FleetBase(BaseModel):
     fleet_name: Optional[str] = None
@@ -89,7 +89,7 @@ class FleetResponse(FleetBase):
     vehicles: List[VehicleResponse] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
         
         
 class GeoConstraintBase(BaseModel):
@@ -112,4 +112,32 @@ class GeoConstraintResponse(BaseModel):
     vehicle: Optional[VehicleResponse] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+        
+        
+
+class ShopInRoute(BaseModel):
+    shop_id: int
+
+class PredefinedRouteCreate(BaseModel):
+    name: str
+    shops: List[ShopInRoute]  # list of shop IDs
+    
+class PredefinedRouteUpdate(BaseModel):
+    name: Optional[str] = None
+    shops: Optional[List[ShopInRoute]] = None
+
+class ShopInRouteResponse(BaseModel):
+    shop_id: int
+    shop: dict  # {shop_code, latitude, longitude}
+
+    class Config:
+        from_attributes = True
+        
+class PredefinedRouteResponse(BaseModel):
+    id: int
+    name: str
+    shops: List[ShopInRouteResponse] = []
+
+    class Config:
+        from_attributes = True

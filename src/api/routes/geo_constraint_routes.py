@@ -12,13 +12,17 @@ get_db = database.get_db
 geo_constraint_router = APIRouter(prefix="/geo-constraint", tags=["geo-constraint"])
 
 
+
 def _enrich(geo: models.GeoConstraint) -> schemas.GeoConstraintResponse:
-    """Convert ORM → Pydantic with only needed shop fields."""
+    vehicle_data = None
+    if geo.vehicle:
+        vehicle_data = schemas.VehicleResponse.from_orm(geo.vehicle)
+
     return schemas.GeoConstraintResponse(
         id=geo.id,
         start_shop=shop_coords(geo.start_shop),
         end_shop=shop_coords(geo.end_shop),
-        vehicle=geo.vehicle,
+        vehicle=vehicle_data,
     )
 
 
@@ -53,3 +57,8 @@ def update(id: int, request: schemas.GeoConstraintUpdate, db: Session = Depends(
 @geo_constraint_router.delete("/{id}", status_code=status.HTTP_200_OK)
 def delete(id: int, db: Session = Depends(get_db)):
     return ops.delete_geo_constraint(id, db)
+
+@geo_constraint_router.get("/by-vehicle/{vehicle_id}", response_model=List[schemas.GeoConstraintResponse])
+def get_by_vehicle(vehicle_id: int, db: Session = Depends(get_db)):
+    geos = ops.all_geo_constraints(vehicle_id=vehicle_id, db=db)
+    return [_enrich(g) for g in geos]

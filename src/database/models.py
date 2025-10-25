@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, UniqueConstraint, DateTime, ForeignKey, CheckConstraint
+from sqlalchemy import Column,JSON, Integer, String, Float, UniqueConstraint, DateTime, ForeignKey, CheckConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from .database import Base
@@ -68,6 +68,7 @@ class Vehicles(Base):
     # Define relationships
     fleet = relationship("Fleets", back_populates="vehicles")
     constraint = relationship("VehicleConstrain", back_populates="vehicle", uselist=False, cascade="all, delete-orphan")
+    geo_constraint = relationship("GeoConstraint", back_populates="vehicle", cascade="all, delete-orphan")
     
 class VehicleConstrain(Base):
     """Vehicle constraint storage table"""
@@ -87,7 +88,6 @@ class VehicleConstrain(Base):
     
     # Define one-to-one relationship with Vehicles
     vehicle = relationship("Vehicles", back_populates="constraint")
-    geo_constraint = relationship("GeoConstraint", back_populates="vehicle", uselist=False, cascade="all, delete-orphan")
     
 class GeoConstraint(Base):
     __tablename__ = "geo_constraints"
@@ -95,9 +95,26 @@ class GeoConstraint(Base):
     id = Column(Integer, primary_key=True, index=True)
     start_shop_id = Column(Integer, ForeignKey("master_gps.id"), nullable=False)
     end_shop_id   = Column(Integer, ForeignKey("master_gps.id"), nullable=False)
-    vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=True, unique=True)
+    vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=True)
     
     # relationships
     start_shop = relationship("GPSMaster", foreign_keys=[start_shop_id])
     end_shop   = relationship("GPSMaster", foreign_keys=[end_shop_id])
     vehicle    = relationship("Vehicles", back_populates="geo_constraint")
+    # UNIQUE TOGETHER: (start, end, vehicle)
+    __table_args__ = (UniqueConstraint('start_shop_id','end_shop_id','vehicle_id',name='uix_route_vehicle'),)
+    
+    
+
+class PredefinedRoute(Base):
+    __tablename__ = "predefined_routes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, unique=True)
+    
+    # Store shops as JSON: [{"shop_id": 1}, {"shop_id": 5}, ...]
+    shops = Column(JSON, nullable=False, default=list)
+
+    __table_args__ = (
+        UniqueConstraint('name', name='uix_route_name'),
+    )
