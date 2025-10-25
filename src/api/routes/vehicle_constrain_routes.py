@@ -1,6 +1,6 @@
 from fastapi import APIRouter, status, Depends, HTTPException
 from sqlalchemy.orm import Session
-from src.database.repository import fleet_operation
+from src.database.repository import fleet_curd
 from src.api import schemas
 from src.database import database
 
@@ -17,7 +17,7 @@ def update_vehicle_constraint(vehicle_id: int, request: schemas.VehicleConstrain
     Update the constraints for a specific vehicle.
     """
     try:
-        constraint = fleet_operation.update_vehicle_constraint(vehicle_id=vehicle_id, request=request, db=db)
+        constraint = fleet_curd.update_vehicle_constraint(vehicle_id=vehicle_id, request=request, db=db)
         return constraint
     except HTTPException as e:
         raise e

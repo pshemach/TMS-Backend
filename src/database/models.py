@@ -87,3 +87,17 @@ class VehicleConstrain(Base):
     
     # Define one-to-one relationship with Vehicles
     vehicle = relationship("Vehicles", back_populates="constraint")
+    geo_constraint = relationship("GeoConstraint", back_populates="vehicle", uselist=False, cascade="all, delete-orphan")
+    
+class GeoConstraint(Base):
+    __tablename__ = "geo_constraints"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    start_shop_id = Column(Integer, ForeignKey("master_gps.id"), nullable=False)
+    end_shop_id   = Column(Integer, ForeignKey("master_gps.id"), nullable=False)
+    vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=True, unique=True)
+    
+    # relationships
+    start_shop = relationship("GPSMaster", foreign_keys=[start_shop_id])
+    end_shop   = relationship("GPSMaster", foreign_keys=[end_shop_id])
+    vehicle    = relationship("Vehicles", back_populates="geo_constraint")

@@ -90,3 +90,12 @@ def update(id: int, request: schemas.ShopRequest, db: Session):
         return shop.first()
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail= f"unable to update shop id {id}, error: {e}")
+    
+    
+def shop_coords(shop: models.GPSMaster) -> dict:
+    """Return only the fields the API needs."""
+    return {
+        "shop_code": shop.shop_code,
+        "latitude":  shop.latitude,
+        "longitude": shop.longitude,
+    }

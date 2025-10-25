@@ -1,7 +1,7 @@
 from fastapi import APIRouter, status, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
-from src.database.repository import fleet_operation
+from src.database.repository import fleet_curd
 from src.api import schemas
 from src.database import database
 
@@ -16,7 +16,7 @@ fleet_router = APIRouter(
 def get_all_fleet(db: Session = Depends(get_db)):
     """Retrieve all fleets with their vehicles."""
     try:
-        fleets = fleet_operation.all_fleets(db)
+        fleets = fleet_curd.all_fleets(db)
         return fleets
     except Exception as e:
         db.rollback()
@@ -29,7 +29,7 @@ def get_all_fleet(db: Session = Depends(get_db)):
 def get_fleet(id: int, db: Session=Depends(get_db)):
     """Retrieve a fleet by ID with its vehicles."""
     try: 
-        fleet = fleet_operation.get_fleet(id=id, db=db)
+        fleet = fleet_curd.get_fleet(id=id, db=db)
         return fleet
     except Exception as e:
         raise HTTPException(
@@ -41,7 +41,7 @@ def get_fleet(id: int, db: Session=Depends(get_db)):
 def create_fleet(request: schemas.FleetRequest, db: Session=Depends(get_db)):
     """Create new fleet"""
     try:
-        new_fleet = fleet_operation.create_fleet(request=request, db=db)
+        new_fleet = fleet_curd.create_fleet(request=request, db=db)
         return new_fleet
     except Exception as e:
         db.rollback()
@@ -54,7 +54,7 @@ def create_fleet(request: schemas.FleetRequest, db: Session=Depends(get_db)):
 def delete_fleet(id: int, db: Session = Depends(get_db)):
     """Delete a fleet and its associated vehicles."""
     try:
-        msg = fleet_operation.delete_fleet(id, db)
+        msg = fleet_curd.delete_fleet(id, db)
         return msg
     except Exception as e:
         db.rollback()
@@ -67,7 +67,7 @@ def delete_fleet(id: int, db: Session = Depends(get_db)):
 def update_fleet(id: int, request: schemas.FleetRequest, db: Session = Depends(get_db)):
     """Update a fleet's metadata."""
     try:
-        fleet = fleet_operation.update_fleet(id, request, db)
+        fleet = fleet_curd.update_fleet(id, request, db)
         return fleet
     except Exception as e:
         db.rollback()
