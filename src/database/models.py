@@ -1,6 +1,7 @@
-from sqlalchemy import Column,JSON, Integer, String, Float, UniqueConstraint, DateTime, ForeignKey, CheckConstraint
+from sqlalchemy import Column,JSON, Integer, String, Float, Date, Time, UniqueConstraint, DateTime, Enum, Table, ForeignKey, CheckConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
+import enum
 from .database import Base
 
 class GPSMaster(Base):
@@ -118,3 +119,56 @@ class PredefinedRoute(Base):
     __table_args__ = (
         UniqueConstraint('name', name='uix_route_name'),
     )
+    
+
+# Enum for status
+class OrderStatus(enum.Enum):
+    PENDING = "pending"      # Not yet in optimization
+    ACTIVE = "active"        # In current route plan
+    COMPLETED = "completed"  # Delivered
+    
+class Priority(enum.Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    
+class Order(Base):
+    __tablename__ = "orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(String, unique=True, nullable=False, index=True)
+    shop_id = Column(Integer, ForeignKey("master_gps.id"), nullable=False)
+    po_value = Column(Float, nullable=True)
+    volume = Column(Float, nullable=True)
+    po_date = Column(Date, nullable=False)
+    status = Column(Enum(OrderStatus), nullable=False, default=OrderStatus.PENDING, index=True)
+
+    # Constraints
+    time_window_start = Column(Time, nullable=True)  # e.g., 09:00:00
+    time_window_end = Column(Time, nullable=True)    # e.g., 17:00:00
+    priority = Column(Enum(Priority), nullable=True, default=Priority.MEDIUM)
+
+    # Relationships
+    shop = relationship("GPSMaster")
+    group = relationship("OrderGroup", back_populates="orders", secondary="order_group_link")
+
+    __table_args__ = (UniqueConstraint('order_id', name='uix_order_id'),)
+    
+    
+class OrderGroup(Base):
+    __tablename__ = "order_groups"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, unique=True)  # e.g., "Colombo Morning Batch"
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    orders = relationship("Order", back_populates="group", secondary="order_group_link")
+
+
+# --- Link Table (Many-to-Many) ---
+order_group_link = Table(
+    "order_group_link",
+    Base.metadata,
+    Column("order_id", Integer, ForeignKey("orders.id"), primary_key=True),
+    Column("group_id", Integer, ForeignKey("order_groups.id"), primary_key=True),
+)
