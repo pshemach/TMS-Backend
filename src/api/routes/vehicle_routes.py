@@ -1,6 +1,6 @@
 from fastapi import APIRouter, status, Depends, HTTPException
 from sqlalchemy.orm import Session
-from src.database.repository import fleet_curd, vehicle_curd
+from src.database.repository import fleet_curd, vehicle_crud
 from src.api import schemas
 from src.database import database
 from typing import List, Optional
@@ -41,7 +41,7 @@ def get_vehicle(id: int, db: Session = Depends(get_db)):
     Retrieve a vehicle by ID.
     """
     try:
-        vehicle = vehicle_curd.get_vehicle(id=id, db=db)
+        vehicle = vehicle_crud.get_vehicle(id=id, db=db)
         return vehicle
     except HTTPException as e:
         raise e
@@ -58,7 +58,7 @@ def create_vehicle(fleet_id: int, request: schemas.VehicleRequest, db: Session =
     Create a new vehicle in the specified fleet with default constraints.
     """
     try:
-        new_vehicle = vehicle_curd.create_vehicle(fleet_id=fleet_id, request=request, db=db)
+        new_vehicle = vehicle_crud.create_vehicle(fleet_id=fleet_id, request=request, db=db)
         return new_vehicle
     except HTTPException as e:
         raise e
@@ -75,7 +75,7 @@ def update_vehicle(id: int, request: schemas.VehicleRequest, db: Session = Depen
     Update a vehicle's details and adjust fleet vehicle counts if status changes.
     """
     try:
-        vehicle = vehicle_curd.update_vehicle(vehicle_id=id, request=request, db=db)
+        vehicle = vehicle_crud.update_vehicle(vehicle_id=id, request=request, db=db)
         return vehicle
     except HTTPException as e:
         raise e
@@ -92,7 +92,7 @@ def delete_vehicle(id: int, db: Session = Depends(get_db)):
     Delete a vehicle and update fleet vehicle counts.
     """
     try:
-        msg = vehicle_curd.delete_vehicle(vehicle_id=id, db=db)
+        msg = vehicle_crud.delete_vehicle(vehicle_id=id, db=db)
         return msg
     except HTTPException as e:
         raise e

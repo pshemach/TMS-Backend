@@ -172,3 +172,49 @@ order_group_link = Table(
     Column("order_id", Integer, ForeignKey("orders.id"), primary_key=True),
     Column("group_id", Integer, ForeignKey("order_groups.id"), primary_key=True),
 )
+
+
+class JobStatus(enum.Enum):
+    PLANNED = "planned"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+class Job(Base):
+    __tablename__ = "jobs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    day = Column(Date, nullable=False)
+    status = Column(Enum(JobStatus), default=JobStatus.PLANNED, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    routes = relationship("JobRoute", back_populates="job", cascade="all, delete-orphan")
+
+
+class JobRoute(Base):
+    __tablename__ = "job_routes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
+    vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=False)
+    total_distance = Column(Float, nullable=True)
+    total_time = Column(Float, nullable=True)
+
+    job = relationship("Job", back_populates="routes")
+    vehicle = relationship("Vehicles")
+    stops = relationship("JobStop", back_populates = "route", cascade="all, delete-orphan", order_by="JobStop.sequence")
+
+
+class JobStop(Base):
+    __tablename__ = "job_stops"
+
+    id = Column(Integer, primary_key=True, index=True)
+    route_id = Column(Integer, ForeignKey("job_routes.id"), nullable=False)
+    shop_id = Column(Integer, ForeignKey("master_gps.id"), nullable=False)
+    sequence = Column(Integer, nullable=False)
+    arrival_time = Column(Time, nullable=True)
+    departure_time = Column(Time, nullable=True)
+
+    route = relationship("JobRoute", back_populates="stops")
+    shop = relationship("GPSMaster")

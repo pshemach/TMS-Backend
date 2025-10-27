@@ -1,5 +1,5 @@
 from pydantic import BaseModel, validator
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import date, datetime, time
 
 class ShopRequest(BaseModel):
@@ -219,3 +219,72 @@ class OrderGroupResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class VehicleRouteAssignment(BaseModel):
+    vehicle_id: int
+    predefined_route_id: Optional[int] = None 
+        
+class OptimizeRequest(BaseModel):
+    day: date
+    vehicles: List[VehicleRouteAssignment]
+    selected_orders: Optional[List[str]] = None
+    order_group_id: Optional[int] = None
+    use_time_windows: bool = False
+    priority_orders: Optional[List[str]] = None
+    geo_constraints: Optional[List[Dict]] = None
+
+class OptimizeResponse(BaseModel):
+    job_id: int
+    message: str
+    fixed_routes: int
+    optimized_routes: int
+    total_shops: int
+    
+    
+
+class JobSummary(BaseModel):
+    id: int
+    name: str
+    day: date
+    status: str
+    created_at: datetime
+    route_count: int
+
+class RouteSummary(BaseModel):
+    id: int
+    vehicle_id: int
+    vehicle_code: str
+    stop_count: int
+
+class JobStopDetail(BaseModel):
+    sequence: int
+    shop_id: int
+    shop_code: str
+    shop_coords: dict
+    arrival_time: Optional[time] = None
+    departure_time: Optional[time] = None
+
+class VehicleVisit(BaseModel):
+    sequence: int
+    shop_id: int
+    shop_code: str
+    shop_coords: dict
+
+class VehicleRoute(BaseModel):
+    id: int
+    job_id: int
+    vehicle_id: int
+    vehicle_code: str
+    total_distance: Optional[float]
+    total_time: Optional[float]
+    stops: List[JobStopDetail]
+
+class JobResponse(BaseModel):
+    id: int
+    name: str
+    day: date
+    status: str
+    created_at: datetime
+    total_routes: int
+    total_stops: int
+    routes: List[RouteSummary]
