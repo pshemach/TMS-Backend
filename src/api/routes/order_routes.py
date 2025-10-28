@@ -91,12 +91,13 @@ def list_all(
     return [_enrich(o) for o in orders]
 
 
-# NEW: Get only pending orders (for optimizer)
-@router.get("/pending", response_model=List[schemas.OrderResponse])
-def get_pending(
-    date_from: Optional[date] = None,
-    date_to: Optional[date] = None,
-    db: Session = Depends(get_db)
-):
-    orders = ops.get_pending_orders(db, date_from, date_to)
-    return [_enrich(o) for o in orders]
+# # NEW: Get only pending orders (for optimizer)
+# @router.get("/pending")
+# def get_pending_all(
+#     date_from: Optional[date] = None,
+#     date_to: Optional[date] = None,
+#     db: Session = Depends(get_db)
+# ):  
+#     print(date_from)
+#     # orders = ops.get_pending_orders(db, date_from, date_to)
+#     return date_from
