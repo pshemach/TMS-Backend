@@ -53,8 +53,10 @@ def usage():
         # This returns the SAME data (no separate B→A storage)
         dist, time = manager.get_distance(5, 1)
         print(f"Distance from shop 5 to shop 1: {dist:.2f} km, {time:.2f} min")
+    except Exception as e:
+        print(e)
+        
     finally:
-        # db.commit()
         db.close()
         
 if __name__ == "__main__":

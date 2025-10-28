@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 from typing import List, Dict, Tuple
 from datetime import datetime
 from src.utils.master_utils import get_osrm_data
@@ -11,6 +11,7 @@ class DistanceMatrixManager:
     
     def __init__(self, db_session: Session, max_workers: int = 10):
         self.db = db_session
+        # self.session = scoped_session(db_session)
         self.max_workers = max_workers
         self._lock = threading.Lock()  # For thread-safe database operations
         
@@ -29,8 +30,8 @@ class DistanceMatrixManager:
         Calculate distances, duration and update matrix_status to 'updated'.
         Uses threading for faster processing.
         """
-        db = self.db
-        pending_shops = db.query(GPSMaster).filter(
+        # db = self.db
+        pending_shops = self.db.query(GPSMaster).filter(
             (GPSMaster.matrix_status == 'to_update') | 
             (GPSMaster.matrix_status == 'to_create')
         ).all()
@@ -38,9 +39,18 @@ class DistanceMatrixManager:
         if not pending_shops:
             print("No pending updates found.")
             return 0
+        
+        to_update_shops = self.db.query(GPSMaster).filter(
+            (GPSMaster.matrix_status == 'to_update')
+            ).all()
+        
+        if to_update_shops:
+            for delete_shop in to_update_shops:
+                # Delete old distances if this shop was previously in matrix
+                self._delete_shop_distances(delete_shop.id, self.db)
 
         # Get all shops that are already in the matrix (status = 'updated')
-        existing_shops = db.query(GPSMaster).filter(
+        existing_shops = self.db.query(GPSMaster).filter(
             GPSMaster.matrix_status == 'updated'
         ).all()
         
@@ -51,9 +61,6 @@ class DistanceMatrixManager:
         
         for pending_shop in pending_shops:
             print(f"\nProcessing shop: {pending_shop.shop_code} (ID: {pending_shop.id})")
-            
-            # Delete old distances if this shop was previously in matrix
-            self._delete_shop_distances(pending_shop.id, db)
             
             # Calculate distances to all existing shops (with threading)
             distances_added = self._add_shop_to_matrix_threaded(
@@ -72,15 +79,6 @@ class DistanceMatrixManager:
                 )
                 
                 distances_added += len(pending_distances)
-                
-            # # NOW commit all changes for this shop
-            # try:
-            #     self.db.commit()
-            #     print(f"\n✓ Committed {distances_added} distances to database")
-            # except Exception as e:
-            #     print(f"\n✗ Error committing to database: {e}")
-            #     self.db.rollback()
-            #     continue
             
             # Update status to 'updated'
             pending_shop.matrix_status = 'updated'
@@ -88,8 +86,14 @@ class DistanceMatrixManager:
             
             print(f"✓ Total added for this shop: {total_calculations} distance calculations")
         
-        # Final commit for status updates
-        db.commit()
+            # commit all changes for this shop
+            try:
+                self.db.commit()
+                print(f"\n✓ Committed {distances_added} distances to database")
+            except Exception as e:
+                print(f"\n✗ Error committing to database: {e}")
+                self.db.rollback()
+                continue
         
     def _delete_shop_distances(self, shop_id: int, db: Session) -> None:
         """Delete all distance entries for a specific shop"""
@@ -97,6 +101,7 @@ class DistanceMatrixManager:
             (MatrixMaster.shop_id_1 == shop_id )|
             (MatrixMaster.shop_id_2 == shop_id)
         )
+        print(entry)
         entry.delete(synchronize_session=False)
         db.commit()
         
@@ -175,46 +180,53 @@ class DistanceMatrixManager:
         Save distance to database in a thread-safe manner.
         IMPORTANT: Does NOT store both A→B and B→A, only stores once.
         """
-        db = self.db
-        # Ensure we always store with shop_id_1 < shop_id_2 (upper triangle)
-        sid1 = min(distance_data['shop_id_1'], distance_data['shop_id_2'])
-        sid2 = max(distance_data['shop_id_1'], distance_data['shop_id_2'])
-        
-        # Get corresponding shop codes in correct order
-        if distance_data['shop_id_1'] == sid1:
-            scode1 = distance_data['shop_code_1']
-            scode2 = distance_data['shop_code_2']
-        else:
-            scode1 = distance_data['shop_code_2']
-            scode2 = distance_data['shop_code_1']
-        
-        # Check if this distance pair already exists
-        existing = self.db.query(MatrixMaster).filter(
-            MatrixMaster.shop_id_1 == sid1,
-            MatrixMaster.shop_id_2 == sid2
-        ).first()
-        
+        # db = self.session
+        try:
+            # Ensure we always store with shop_id_1 < shop_id_2 (upper triangle)
+            sid1 = min(distance_data['shop_id_1'], distance_data['shop_id_2'])
+            sid2 = max(distance_data['shop_id_1'], distance_data['shop_id_2'])
+            
+            # Get corresponding shop codes in correct order
+            if distance_data['shop_id_1'] == sid1:
+                scode1 = distance_data['shop_code_1']
+                scode2 = distance_data['shop_code_2']
+            else:
+                scode1 = distance_data['shop_code_2']
+                scode2 = distance_data['shop_code_1']
+            
+            # Check if this distance pair already exists
+            existing = self.db.query(MatrixMaster).filter(
+                MatrixMaster.shop_id_1 == sid1,
+                MatrixMaster.shop_id_2 == sid2
+            ).first()
+            
 
-        if existing:
-            # Update existing record
-            existing.distance_km = distance_data['distance_km']
-            existing.time_minutes = distance_data['time_minutes']
-            existing.last_calculated = datetime.utcnow()
-            print(f"  ✓ Updated: {scode1} ↔ {scode2} = {distance_data['distance_km']:.2f} km")
-        else:
-            # Create new record
-            new_distance = MatrixMaster(
-                shop_id_1=sid1,
-                shop_id_2=sid2,
-                shop_code_1=scode1,
-                shop_code_2=scode2,
-                distance_km=distance_data['distance_km'],
-                time_minutes=distance_data['time_minutes'],
-                last_calculated=datetime.utcnow()
-            )
-            db.add(new_distance)
-            print(f"  ✓ Added: {scode1} ↔ {scode2} = {distance_data['distance_km']:.2f} km")
-        db.commit()
+            if existing:
+                # Update existing record
+                existing.distance_km = distance_data['distance_km']
+                existing.time_minutes = distance_data['time_minutes']
+                existing.last_calculated = datetime.utcnow()
+                # self.db.commit()
+                print(f"  ✓ Updated: {scode1} ↔ {scode2} = {distance_data['distance_km']:.2f} km")
+            else:
+                # Create new record
+                new_distance = MatrixMaster(
+                    shop_id_1=sid1,
+                    shop_id_2=sid2,
+                    shop_code_1=scode1,
+                    shop_code_2=scode2,
+                    distance_km=distance_data['distance_km'],
+                    time_minutes=distance_data['time_minutes'],
+                    last_calculated=datetime.utcnow()
+                )
+                self.db.add(new_distance)
+                self.db.commit()
+                # db.refresh(new_distance)
+                print(f"  ✓ Added: {scode1} ↔ {scode2} = {distance_data['distance_km']:.2f} km")
+                
+        except Exception as e:
+            self.db.rollback()
+            print(f"Error: {e}")
 
     def get_distance(self, shop_id_1: int, shop_id_2: int) -> Tuple[float, float]:
         """

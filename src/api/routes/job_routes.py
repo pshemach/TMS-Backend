@@ -9,6 +9,12 @@ from src.database.repository.shops_curd import shop_coords
 router = APIRouter(prefix="/job", tags=["job"])
 get_db = database.get_db
 
+# Backwards compatibility: some code expects Vehicles.vehicle_code. Map it to vehicle_name if missing.
+if not hasattr(models.Vehicles, "vehicle_code"):
+    def _vehicle_code(self):
+        return getattr(self, "vehicle_name", None)
+    setattr(models.Vehicles, "vehicle_code", property(_vehicle_code))
+
 # === 1. Get Job Summary ===
 @router.get("/{job_id}", response_model=schemas.JobResponse)
 def get_job(job_id: int, db: Session = Depends(get_db)):
@@ -138,7 +144,7 @@ def _enrich_route(route: models.JobRoute) -> schemas.VehicleRoute:
         id=route.id,
         job_id=route.job_id,
         vehicle_id=route.vehicle_id,
-        vehicle_code=route.vehicle.vehicle_code,
+        vehicle_code=route.vehicle.vehicle_name,
         total_distance=route.total_distance,
         total_time=route.total_time,
         stops=stops
