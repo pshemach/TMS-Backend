@@ -124,6 +124,60 @@ def update_order(order_db_id: int, request: schemas.OrderUpdate, db: Session) ->
     db.refresh(order)
     return order
 
+def update_order_oid(order_db_id: str, request: schemas.OrderUpdate, db: Session) -> models.Order:
+    order = db.query(models.Order).filter(models.Order.order_id == order_db_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail=f"Order {order_db_id} not found")
+
+    # === Validate & Update order_id ===
+    if request.order_id and request.order_id != order.order_id:
+        if db.query(models.Order).filter(models.Order.order_id == request.order_id).first():
+            raise HTTPException(400, f"Order ID {request.order_id} already exists")
+        order.order_id = request.order_id
+
+    # === Validate & Update shop_id ===
+    if request.shop_id and request.shop_id != order.shop_id:
+        shop = db.query(models.GPSMaster).filter(models.GPSMaster.id == request.shop_id).first()
+        if not shop:
+            raise HTTPException(404, f"Shop {request.shop_id} not found")
+        order.shop_id = request.shop_id
+
+    # === Simple fields ===
+    if request.po_value is not None:
+        order.po_value = request.po_value
+    if request.volume is not None:
+        order.volume = request.volume
+    if request.po_date:
+        order.po_date = request.po_date
+
+    # === Time Window ===
+    if request.time_window is not None:
+        order.time_window_start = request.time_window.start
+        order.time_window_end = request.time_window.end
+    # Allow clearing time window
+    elif request.time_window is None and (order.time_window_start or order.time_window_end):
+        order.time_window_start = None
+        order.time_window_end = None
+
+    # === Priority ===
+    if request.priority:
+        order.priority = Priority(request.priority)
+    elif request.priority is None and order.priority:
+        order.priority = Priority.MEDIUM  # default
+
+    # === Status (with validation) ===
+    if request.status:
+        new_status = OrderStatus(request.status)
+        # Optional: Prevent invalid transitions
+        if order.status == OrderStatus.COMPLETED and new_status != OrderStatus.COMPLETED:
+            raise HTTPException(400, "Cannot change status from completed")
+        if order.status == OrderStatus.ACTIVE and new_status == OrderStatus.PENDING:
+            raise HTTPException(400, "Cannot revert active to pending")
+        order.status = new_status
+
+    db.commit()
+    db.refresh(order)
+    return order
 
 def delete_order(order_db_id: int, db: Session):
     order = db.query(models.Order).filter(models.Order.id == order_db_id).first()

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List
 from src.database import database
 from src.database import models
@@ -44,6 +44,12 @@ def create(request: schemas.OrderGroupCreate, db: Session = Depends(get_db)):
     group = ops.create_order_group(request, db)
     return _enrich_group(group)
 
+@router.get("/", response_model=List[schemas.OrderGroupResponse])
+def get_all(db: Session = Depends(get_db)):
+    groups = db.query(models.OrderGroup).options(
+        joinedload(models.OrderGroup.orders).joinedload(models.Order.shop)
+    ).all()
+    return [_enrich_group(g) for g in groups]
 
 @router.get("/{group_id}", response_model=schemas.OrderGroupResponse)
 def get(group_id: int, db: Session = Depends(get_db)):

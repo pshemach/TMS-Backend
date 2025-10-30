@@ -17,6 +17,14 @@ def create_order_group(request: schemas.OrderGroupCreate, db: Session) -> models
     if len(orders) != len(request.order_ids):
         raise HTTPException(400, "One or more orders not found or not pending")
 
+    for order in orders:
+        if order.group:
+            raise HTTPException(
+                400,
+                f"Order {order.order_id} is already in group '{order.group.name}'"
+            )
+            
+            
     group = models.OrderGroup(name=request.name)
     group.orders = orders
     db.add(group)
@@ -47,7 +55,15 @@ def update_order_group(group_id: int, request: schemas.OrderGroupUpdate, db: Ses
 
         if len(orders) != len(request.order_ids):
             raise HTTPException(400, "One or more orders not found or not pending")
-
+        
+        # BLOCK: Don't allow order from another group
+        for order in orders:
+            if order.group and order.group.id != group_id:
+                raise HTTPException(
+                    400,
+                    f"Order {order.order_id} is already in group '{order.group.name}'"
+                )
+                
         group.orders = orders  # Replace entire list
 
     db.commit()

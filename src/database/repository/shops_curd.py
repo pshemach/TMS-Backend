@@ -20,6 +20,15 @@ def get_shop(id: int, db: Session):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"unable to load shop {id}, error: {e}")
 
+def get_shop_code(shop_code: str, db: Session):
+    try:
+        shop = db.query(models.GPSMaster).filter(models.GPSMaster.shop_code == shop_code)
+        if not shop.first():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"shop with id {id} not found")
+        return shop.first()
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"unable to load shop {id}, error: {e}")
+    
 def create(request: schemas.ShopRequest, db: Session):
     try:
         new_shop = models.GPSMaster(

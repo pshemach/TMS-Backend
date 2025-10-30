@@ -22,6 +22,11 @@ def get_shop(id: int, db: Session = Depends(get_db)):
     shop = shops_curd.get_shop(id, db)
     return shop
 
+@master_router.get('/shop/shop_code/{shop_code}', status_code=status.HTTP_200_OK)
+def get_shop(shop_code: str, db: Session = Depends(get_db)):
+    shop = shops_curd.get_shop_code(shop_code, db)
+    return shop
+
 @master_router.post('/shop', status_code=status.HTTP_201_CREATED)
 def create_shop(request: ShopRequest, db: Session = Depends(get_db)):
     new_shop = shops_curd.create(request, db)

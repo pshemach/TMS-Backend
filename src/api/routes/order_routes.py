@@ -26,6 +26,8 @@ def _enrich(order: models.Order) -> schemas.OrderResponse:
             start=order.time_window_start,
             end=order.time_window_end
         ) if order.time_window_start else None,
+        time_window_start = order.time_window_start if order.time_window_start else None,
+        time_window_end = order.time_window_end if order.time_window_end else None,
         priority=order.priority.value if order.priority else None,
         group=None  # optional
     )
@@ -64,6 +66,11 @@ def update(id: int, request: schemas.OrderUpdate, db: Session = Depends(get_db))
     order = ops.update_order(id, request, db)
     return _enrich(order)
 
+@router.put("/order_id/{id}", response_model=schemas.OrderResponse)
+def update(id: str, request: schemas.OrderUpdate, db: Session = Depends(get_db)):
+    order = ops.update_order_oid(id, request, db)
+    return _enrich(order)
+
 @router.delete("/{id}", status_code=status.HTTP_200_OK)
 def delete(id: int, db: Session = Depends(get_db)):
     return ops.delete_order(id, db)
@@ -89,15 +96,3 @@ def list_all(
     
     orders = q.all()
     return [_enrich(o) for o in orders]
-
-
-# # NEW: Get only pending orders (for optimizer)
-# @router.get("/pending")
-# def get_pending_all(
-#     date_from: Optional[date] = None,
-#     date_to: Optional[date] = None,
-#     db: Session = Depends(get_db)
-# ):  
-#     print(date_from)
-#     # orders = ops.get_pending_orders(db, date_from, date_to)
-#     return date_from

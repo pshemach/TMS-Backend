@@ -22,6 +22,20 @@ class GPSMaster(Base):
         UniqueConstraint('shop_code', 'brand', name='_unique_shop'),
     )
     
+class Depot(Base):
+    """master shop list data storage table"""
+    __tablename__ = 'depots'
+    
+    id = Column(Integer, primary_key=True, index=True)
+    depot_code = Column(String, unique=True)
+    location = Column(String)
+    address = Column(String)
+    district = Column(String)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    matrix_status = Column(String, default=None)
+    
+    
 class MatrixMaster(Base):
     """Distance matrix storage table (upper triangle only)"""
     __tablename__ = 'shop_matrix'
@@ -68,8 +82,17 @@ class Vehicles(Base):
     
     # Define relationships
     fleet = relationship("Fleets", back_populates="vehicles")
-    constraint = relationship("VehicleConstrain", back_populates="vehicle", uselist=False, cascade="all, delete-orphan")
-    geo_constraint = relationship("GeoConstraint", back_populates="vehicle", cascade="all, delete-orphan")
+    constraint = relationship(
+            "VehicleConstrain",
+            back_populates="vehicle",
+            uselist=False,
+            cascade="all, delete-orphan"
+        )
+    geo_constraint = relationship(
+            "GeoConstraint",
+            back_populates="vehicle",
+            cascade="all, delete-orphan"  
+        )
     
 class VehicleConstrain(Base):
     """Vehicle constraint storage table"""
@@ -124,6 +147,7 @@ class PredefinedRoute(Base):
 # Enum for status
 class OrderStatus(enum.Enum):
     PENDING = "pending"      # Not yet in optimization
+    PLANED = "planed"
     ACTIVE = "active"        # In current route plan
     COMPLETED = "completed"  # Delivered
     

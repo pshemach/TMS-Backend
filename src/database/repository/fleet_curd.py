@@ -64,13 +64,13 @@ def create_fleet(request: schemas.FleetRequest, db: Session):
 def delete_fleet(id: int, db: Session):
     """Delete a fleet by ID."""
     try:
-        fleet = db.query(models.Fleets).filter(models.Fleets.id == id)
-        if not fleet.first():
+        fleet = db.query(models.Fleets).filter(models.Fleets.id == id).first()
+        if not fleet:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Fleet with id {id} not found"
             )
-        fleet.delete(synchronize_session=False)
+        db.delete(fleet)
         db.commit()
         return {"message": f"Fleet with id {id} deleted"}
     except HTTPException as e:

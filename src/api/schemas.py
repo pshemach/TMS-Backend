@@ -169,6 +169,7 @@ class OrderUpdate(BaseModel):
     po_value: Optional[float] = None
     volume: Optional[float] = None
     po_date: Optional[date] = None
+    status: Optional[str]
     time_window: Optional[TimeWindow] = None
     priority: Optional[str] = None  # "low", "medium", "high"
     status: Optional[str] = None    # "pending", "active", "completed"
@@ -195,6 +196,8 @@ class OrderResponse(BaseModel):
     po_date: Optional[date]
     status: Optional[str]
     time_window: Optional[TimeWindow]
+    time_window_start: Optional[time] = None
+    time_window_end: Optional[time] = None
     priority: Optional[str]
     group: Optional[dict] = None  # {id, name}
 

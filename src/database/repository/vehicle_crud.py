@@ -119,34 +119,48 @@ def update_vehicle(vehicle_id: int, request: schemas.VehicleRequest, db: Session
         )
         
 def delete_vehicle(vehicle_id: int, db: Session):
-    """Delete a vehicle and update fleet vehicle counts."""
+    """Delete a vehicle AND its constraint, then update fleet counts."""
     try:
-        vehicle = db.query(models.Vehicles).filter(models.Vehicles.id == vehicle_id)
-        if not vehicle.first():
+        # 1. Get vehicle (with constraint pre-loaded to avoid extra query)
+        vehicle = db.query(models.Vehicles).filter(models.Vehicles.id == vehicle_id).first()
+        if not vehicle:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Vehicle with id {vehicle_id} not found"
             )
-        
-        fleet = db.query(models.Fleets).filter(models.Fleets.id == vehicle.first().fleet_id).first()
+
+        # 2. Get fleet for count updates
+        fleet = db.query(models.Fleets).filter(models.Fleets.id == vehicle.fleet_id).first()
         if not fleet:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Fleet with id {vehicle.first().fleet_id} not found"
+                detail=f"Fleet with id {vehicle.fleet_id} not found"
             )
-        
+
+        # # 3. Delete related constraint FIRST
+        # constraint = db.query(models.VehicleConstrain).filter(
+        #     models.VehicleConstrain.vehicle_id == vehicle_id
+        # ).first()
+        # if constraint:
+        #     db.delete(constraint)  # Remove constraint
+
+        # 4. Update fleet counts
         fleet.total_vehicles -= 1
-        if vehicle.first().status == "available":
+        if vehicle.status == "available":
             fleet.available_vehicles -= 1
-        
-        vehicle.delete(synchronize_session=False)
+
+        # 5. Delete vehicle
+        db.delete(vehicle)
+
+        # 6. Commit all changes
         db.commit()
-        return {"message": f"Vehicle with id {vehicle_id} deleted"}
+        return {"message": f"Vehicle {vehicle_id} and its constraint deleted successfully"}
+
     except Exception as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unable to delete vehicle id {vehicle_id}, error: {e}"
+            detail=f"Unable to delete vehicle {vehicle_id}: {e}"
         )
         
 def update_vehicle_constraint(vehicle_id: int, request: schemas.VehicleConstrainRequest, db: Session):

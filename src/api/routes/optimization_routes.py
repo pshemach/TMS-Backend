@@ -70,6 +70,8 @@ def run_optimization(
 		"priority_orders": request.priority_orders or [],
 		"geo_constraints": request.geo_constraints or [],
 	}
+ 
+	print(request_payload)
 
 	# Queue background worker (pass job id so core updates the placeholder)
 	background_tasks.add_task(opt.run_optimization_task, db, request_payload, vehicles, orders, job.id)
