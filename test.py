@@ -28,7 +28,7 @@ def usage():
         
         # Get distance matrix for specific shops
         print("\n=== Getting Distance Matrix ===")
-        shop_ids = [1, 2, 3, 5]
+        shop_ids = [1, 2, 3, 15]
         
         # Option 1: As dictionary
         distance_dict = manager.get_matrix_for_shops(shop_ids)

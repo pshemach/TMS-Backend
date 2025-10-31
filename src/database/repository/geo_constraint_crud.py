@@ -119,6 +119,9 @@ def update_geo_constraint(id: int, request: schemas.GeoConstraintUpdate, db: Ses
         if existing and existing.id != id:
             raise HTTPException(status_code=400, detail="Vehicle already assigned to another geo-constraint")
         geo.vehicle_id = request.vehicle_id
+        
+    if request.vehicle_id is None:
+        geo.vehicle_id = None
 
     db.commit()
     db.refresh(geo)

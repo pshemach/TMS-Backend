@@ -222,6 +222,8 @@ class OrderGroupResponse(BaseModel):
 
     class Config:
         from_attributes = True
+        
+        
 
 class VehicleRouteAssignment(BaseModel):
     vehicle_id: int
@@ -231,7 +233,7 @@ class OptimizeRequest(BaseModel):
     day: date
     vehicles: List[VehicleRouteAssignment]
     selected_orders: Optional[List[str]] = None
-    order_group_id: Optional[int] = None
+    order_group_id: Optional[List[int]] = None
     use_time_windows: Optional[bool] = False
     priority_orders: Optional[List[str]] = None
     geo_constraints: Optional[List[Dict]] = None

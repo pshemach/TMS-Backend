@@ -23,30 +23,30 @@ class VehicleRouteAssignment(BaseModel):
 class OptimizeRequest(BaseModel):
     day: Optional[date]
     vehicles: Optional[List[VehicleRouteAssignment]]
-    selected_orders: Optional[List[str]] = None
-    order_group_id: Optional[int] = None
+    selected_order_id: Optional[List[int]] = None
+    order_group_id: Optional[List[int]] = None
     use_time_windows: Optional[bool] = False
-    priority_orders: Optional[List[str]] = None
-    geo_constraints: Optional[List[Dict]] = None
     
-@router.post("/")
+@router.post("/", response_model=OptimizeResponse)
 def run_optimization(request: OptimizeRequest, background_tasks: BackgroundTasks,db: Session = Depends(get_db)):
     # Extract vehicle ids and optional predefined route ids from the new schema
     print(request.vehicles)
     if not request.vehicles or len(request.vehicles) == 0:
         raise HTTPException(status_code=400, detail="No vehicles provided in request")
     
-    if not request.selected_orders or len(request.selected_orders) == 0:
+    if not request.selected_order_id or len(request.selected_order_id) == 0:
         raise HTTPException(status_code=400, detail="No orders provided in request")
     
     orders = db.query(models.Order).filter(
-			models.Order.order_id.in_(request.selected_orders)
+			models.Order.id.in_(request.selected_order_id)
 		).all()
     
     if not orders:
         raise HTTPException(status_code=400, detail="No pending orders to optimize")
 
     orders_lis = [order.shop_id for order in orders]
+    
+    print(orders_lis)
 
     
     return request

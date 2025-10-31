@@ -10,8 +10,7 @@ def create_order_group(request: schemas.OrderGroupCreate, db: Session) -> models
         raise HTTPException(400, f"Group name '{request.name}' already exists")
 
     orders = db.query(models.Order).filter(
-        models.Order.order_id.in_(request.order_ids),
-        models.Order.status == models.OrderStatus.PENDING
+        models.Order.order_id.in_(request.order_ids)
     ).all()
 
     if len(orders) != len(request.order_ids):
@@ -49,8 +48,7 @@ def update_order_group(group_id: int, request: schemas.OrderGroupUpdate, db: Ses
     if request.order_ids is not None:
         # Fetch valid pending orders
         orders = db.query(models.Order).filter(
-            models.Order.order_id.in_(request.order_ids),
-            models.Order.status == models.OrderStatus.PENDING
+            models.Order.order_id.in_(request.order_ids)
         ).all()
 
         if len(orders) != len(request.order_ids):
