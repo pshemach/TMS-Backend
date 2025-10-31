@@ -9,8 +9,8 @@ from src.database.repository.shops_curd import shop_coords
 from datetime import date
 
 get_db = database.get_db
-router = APIRouter(prefix="/order", tags=["order"])
 
+router = APIRouter(prefix="/order", tags=["order"])
 
 def _enrich(order: models.Order) -> schemas.OrderResponse:
     return schemas.OrderResponse(
