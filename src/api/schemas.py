@@ -230,17 +230,14 @@ class VehicleRouteAssignment(BaseModel):
     predefined_route_id: Optional[int] = None 
         
 class OptimizeRequest(BaseModel):
-    day: date
+    day: Optional[date]
     vehicles: List[VehicleRouteAssignment]
-    selected_orders: List[str]  # Required: list of order_id strings to optimize
+    selected_orders: List[int]  # Required: list of order_id strings to optimize
     use_time_windows: Optional[bool] = False
 
 class OptimizeResponse(BaseModel):
     job_id: int
     message: str
-    fixed_routes: int
-    optimized_routes: int
-    total_shops: int
     
     
 
@@ -255,7 +252,6 @@ class JobSummary(BaseModel):
 class RouteSummary(BaseModel):
     id: int
     vehicle_id: int
-    vehicle_code: str
     stop_count: int
 
 class JobStopDetail(BaseModel):

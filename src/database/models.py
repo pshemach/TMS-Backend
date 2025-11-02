@@ -199,8 +199,8 @@ order_group_link = Table(
 
 
 class JobStatus(enum.Enum):
-    PLANNED = "planned"
     RUNNING = "running"
+    PLANNED = "planned"
     COMPLETED = "completed"
     FAILED = "failed"
 

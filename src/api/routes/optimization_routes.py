@@ -1,100 +1,55 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Dict
 from src.database import database, models
+from datetime import date
 from src.api import schemas
-from src.core import optimize_routes as opt
+from src.core.solver.controller import run_optimization_task
 
-router = APIRouter(prefix="/optimize", tags=["optimization"])
+router = APIRouter(prefix="/optimize", tags=["optimization-test"])
 get_db = database.get_db
 
-
-@router.post("/", response_model=schemas.OptimizeResponse)
+    
+@router.post("/")
 def run_optimization(
-	request: schemas.OptimizeRequest,
-	background_tasks: BackgroundTasks,
-	db: Session = Depends(get_db)
-):
-	"""Start an optimization job in background.
+    request: schemas.OptimizeRequest, 
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+    ):
 
-	Validations:
-	- selected_vehicles must exist
-	- either selected_orders or order_group_id must be provided
-	- only pending orders are considered
-	"""
-	print(request)
-	# Extract vehicle ids and optional predefined route ids from the new schema
-	if not request.vehicles or len(request.vehicles) == 0:
-		raise HTTPException(status_code=400, detail="No vehicles provided in request")
-
-	selected_vehicle_ids = [v.vehicle_id for v in request.vehicles]
-	
-	# Create mapping of vehicle_id -> predefined_route_id
-	vehicle_route_mapping = {v.vehicle_id: v.predefined_route_id for v in request.vehicles if v.predefined_route_id}
-	predefined_route_ids = list(vehicle_route_mapping.values())
-
-	vehicles: List[models.Vehicles] = db.query(models.Vehicles).filter(
-		models.Vehicles.id.in_(selected_vehicle_ids)
-	).all()
-	if len(vehicles) != len(selected_vehicle_ids):
-		raise HTTPException(status_code=400, detail="One or more vehicle IDs are invalid")
-
-	# Resolve orders from selected_orders only
-	if not request.selected_orders:
-		raise HTTPException(status_code=400, detail="selected_orders is required")
-	
-	orders = db.query(models.Order).filter(
-		models.Order.order_id.in_(request.selected_orders),
+    if not request.vehicles or len(request.vehicles) == 0:
+        raise HTTPException(status_code=400, detail="No vehicles provided in request")
+    
+    if not request.selected_orders or len(request.selected_orders) == 0:
+        raise HTTPException(status_code=400, detail="No orders provided in request")
+    
+    orders = db.query(models.Order).filter(
+		models.Order.id.in_(request.selected_orders),
 		models.Order.status != models.OrderStatus.COMPLETED
 	).all()
+    
+    if not orders:
+        raise HTTPException(status_code=400, detail="No uncompleted orders found for the provided order IDs")
+    
+    selected_vehicle_ids = [v.vehicle_id for v in request.vehicles]
+    
+    vehicles = db.query(models.Vehicles).filter(
+		models.Vehicles.id.in_(selected_vehicle_ids)
+	).all()
+    
+    if len(vehicles) != len(selected_vehicle_ids):
+        raise HTTPException(status_code=400, detail="One or more vehicle IDs are invalid")    
+    
+    day = request.day if request.day else date.today()
+    
+    job =   models.Job(name=f"Delivery {day}", day=day, status=models.JobStatus.RUNNING)  
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+    
+    background_tasks.add_task(run_optimization_task, db, request, job.id)
 
-	if not orders:
-		raise HTTPException(status_code=400, detail="No pending orders found for the provided order IDs")
-
-	# Create job placeholder
-	job = models.Job(name=f"Delivery {request.day}", day=request.day, status=models.JobStatus.PLANNED)
-	db.add(job)
-	db.commit()
-	db.refresh(job)
-
-	# Build payload shape expected by core optimizer and queue background worker
-	request_payload = {
-		"day": request.day,
-		"vehicle_route_mapping": vehicle_route_mapping,  # Map vehicle_id -> predefined_route_id
-		"use_time_windows": request.use_time_windows,
-		# Note: geo_constraints and order_groups are automatically fetched from DB in core optimizer
-	}
- 
-	print(request_payload)
-
-	# Queue background worker (pass job id so core updates the placeholder)
-	background_tasks.add_task(opt.run_optimization_task, db, request_payload, vehicles, orders, job.id)
-
-	return schemas.OptimizeResponse(
+    return schemas.OptimizeResponse(
 		job_id=job.id,
-		message="Optimization started",
-		fixed_routes=0,
-		optimized_routes=0,
-		total_shops=len(orders)
+		message="Optimization started"
 	)
-
-
-@router.get("/job/{job_id}")
-def get_job_status(job_id: int, db: Session = Depends(get_db)):
-	"""Return basic job status and counts."""
-	job = db.query(models.Job).filter(models.Job.id == job_id).first()
-	if not job:
-		raise HTTPException(status_code=404, detail="Job not found")
-
-	route_count = db.query(models.JobRoute).filter(models.JobRoute.job_id == job_id).count()
-	stop_count = db.query(models.JobStop).join(models.JobRoute).filter(models.JobRoute.job_id == job_id).count()
-
-	return {
-		"id": job.id,
-		"name": job.name,
-		"day": job.day,
-		"status": job.status.value,
-		"created_at": job.created_at,
-		"route_count": route_count,
-		"stop_count": stop_count,
-	}
