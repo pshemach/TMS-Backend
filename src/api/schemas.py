@@ -232,11 +232,8 @@ class VehicleRouteAssignment(BaseModel):
 class OptimizeRequest(BaseModel):
     day: date
     vehicles: List[VehicleRouteAssignment]
-    selected_orders: Optional[List[str]] = None
-    order_group_id: Optional[List[int]] = None
+    selected_orders: List[str]  # Required: list of order_id strings to optimize
     use_time_windows: Optional[bool] = False
-    priority_orders: Optional[List[str]] = None
-    geo_constraints: Optional[List[Dict]] = None
 
 class OptimizeResponse(BaseModel):
     job_id: int

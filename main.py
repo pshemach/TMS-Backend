@@ -10,6 +10,8 @@ from src.database.database import engine
 
 app = FastAPI()
 
+
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,

@@ -114,10 +114,10 @@ def update_order(order_db_id: int, request: schemas.OrderUpdate, db: Session) ->
     if request.status:
         new_status = OrderStatus(request.status)
         # Optional: Prevent invalid transitions
-        if order.status == OrderStatus.COMPLETED and new_status != OrderStatus.COMPLETED:
-            raise HTTPException(400, "Cannot change status from completed")
-        if order.status == OrderStatus.ACTIVE and new_status == OrderStatus.PENDING:
-            raise HTTPException(400, "Cannot revert active to pending")
+        # if order.status == OrderStatus.COMPLETED and new_status != OrderStatus.COMPLETED:
+        #     raise HTTPException(400, "Cannot change status from completed")
+        # if order.status == OrderStatus.ACTIVE and new_status == OrderStatus.PENDING:
+        #     raise HTTPException(400, "Cannot revert active to pending")
         order.status = new_status
 
     db.commit()

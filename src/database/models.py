@@ -1,4 +1,4 @@
-from sqlalchemy import Column,JSON, Integer, String, Float, Date, Time, UniqueConstraint, DateTime, Enum, Table, ForeignKey, CheckConstraint
+from sqlalchemy import Column,JSON, Integer, String, Float, Date, Time, Text, UniqueConstraint, DateTime, Enum, Table, ForeignKey, CheckConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -224,6 +224,8 @@ class JobRoute(Base):
     vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=False)
     total_distance = Column(Float, nullable=True)
     total_time = Column(Float, nullable=True)
+    
+    folium_html = Column(Text, nullable=True)
 
     job = relationship("Job", back_populates="routes")
     vehicle = relationship("Vehicles")

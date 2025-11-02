@@ -22,12 +22,16 @@ def run_optimization(
 	- either selected_orders or order_group_id must be provided
 	- only pending orders are considered
 	"""
+	print(request)
 	# Extract vehicle ids and optional predefined route ids from the new schema
 	if not request.vehicles or len(request.vehicles) == 0:
 		raise HTTPException(status_code=400, detail="No vehicles provided in request")
 
 	selected_vehicle_ids = [v.vehicle_id for v in request.vehicles]
-	predefined_route_ids = [v.predefined_route_id for v in request.vehicles if v.predefined_route_id]
+	
+	# Create mapping of vehicle_id -> predefined_route_id
+	vehicle_route_mapping = {v.vehicle_id: v.predefined_route_id for v in request.vehicles if v.predefined_route_id}
+	predefined_route_ids = list(vehicle_route_mapping.values())
 
 	vehicles: List[models.Vehicles] = db.query(models.Vehicles).filter(
 		models.Vehicles.id.in_(selected_vehicle_ids)
@@ -35,23 +39,17 @@ def run_optimization(
 	if len(vehicles) != len(selected_vehicle_ids):
 		raise HTTPException(status_code=400, detail="One or more vehicle IDs are invalid")
 
-	# Resolve orders
-	orders = []
-	if request.order_group_id:
-		group = db.query(models.OrderGroup).filter(models.OrderGroup.id == request.order_group_id).first()
-		if not group:
-			raise HTTPException(status_code=404, detail="Order group not found")
-		orders = [o for o in group.orders if o.status == models.OrderStatus.PENDING]
-	elif request.selected_orders:
-		orders = db.query(models.Order).filter(
-			models.Order.order_id.in_(request.selected_orders),
-			models.Order.status == models.OrderStatus.PENDING
-		).all()
-	else:
-		raise HTTPException(status_code=400, detail="Provide selected_orders or order_group_id")
+	# Resolve orders from selected_orders only
+	if not request.selected_orders:
+		raise HTTPException(status_code=400, detail="selected_orders is required")
+	
+	orders = db.query(models.Order).filter(
+		models.Order.order_id.in_(request.selected_orders),
+		models.Order.status != models.OrderStatus.COMPLETED
+	).all()
 
 	if not orders:
-		raise HTTPException(status_code=400, detail="No pending orders to optimize")
+		raise HTTPException(status_code=400, detail="No pending orders found for the provided order IDs")
 
 	# Create job placeholder
 	job = models.Job(name=f"Delivery {request.day}", day=request.day, status=models.JobStatus.PLANNED)
@@ -62,13 +60,9 @@ def run_optimization(
 	# Build payload shape expected by core optimizer and queue background worker
 	request_payload = {
 		"day": request.day,
-		"selected_vehicles": selected_vehicle_ids,
-		"selected_orders": request.selected_orders,
-		"order_group_id": request.order_group_id,
-		"predefined_route_ids": predefined_route_ids or None,
+		"vehicle_route_mapping": vehicle_route_mapping,  # Map vehicle_id -> predefined_route_id
 		"use_time_windows": request.use_time_windows,
-		"priority_orders": request.priority_orders or [],
-		"geo_constraints": request.geo_constraints or [],
+		# Note: geo_constraints and order_groups are automatically fetched from DB in core optimizer
 	}
  
 	print(request_payload)

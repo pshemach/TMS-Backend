@@ -5,32 +5,19 @@ from src.database import database, models
 from src.core import optimize_routes as opt
 from datetime import date
 from pydantic import BaseModel
+from src.api import schemas
 
 router = APIRouter(prefix="/optimize-test", tags=["optimization-test"])
 get_db = database.get_db
 
-class OptimizeResponse(BaseModel):
-    job_id: int
-    message: str
-    fixed_routes: int
-    optimized_routes: int
-    total_shops: int
+    
+@router.post("/")
+def run_optimization(
+    request: schemas.OptimizeRequest, 
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+    ):
 
-class VehicleRouteAssignment(BaseModel):
-    vehicle_id: int
-    predefined_route_id: Optional[int] = None 
-    
-class OptimizeRequest(BaseModel):
-    day: Optional[date]
-    vehicles: Optional[List[VehicleRouteAssignment]]
-    selected_order_id: Optional[List[int]] = None
-    order_group_id: Optional[List[int]] = None
-    use_time_windows: Optional[bool] = False
-    
-@router.post("/", response_model=OptimizeResponse)
-def run_optimization(request: OptimizeRequest, background_tasks: BackgroundTasks,db: Session = Depends(get_db)):
-    # Extract vehicle ids and optional predefined route ids from the new schema
-    print(request.vehicles)
     if not request.vehicles or len(request.vehicles) == 0:
         raise HTTPException(status_code=400, detail="No vehicles provided in request")
     
