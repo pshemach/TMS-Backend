@@ -47,6 +47,7 @@ class MatrixMaster(Base):
     shop_code_2 = Column(String)
     distance_km = Column(Float)
     time_minutes = Column(Float)
+    coords = Column(JSON, nullable=True)
     last_calculated = Column(DateTime, default=datetime.utcnow)
 
 class Fleets(Base):

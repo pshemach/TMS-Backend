@@ -5,9 +5,11 @@ from config.settings import Settings
 
 setting = Settings()
 
-
-engine = create_engine(setting.database_url, connect_args = {
-    "check_same_thread": False})
+connect_args = {}
+if "sqlite" in setting.database_url:
+    connect_args = {"check_same_thread": False}
+    
+engine = create_engine(setting.database_url, connect_args = connect_args, pool_pre_ping=True, pool_recycle=300,)
 
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 

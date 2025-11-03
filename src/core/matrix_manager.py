@@ -5,6 +5,7 @@ from src.utils.master_utils import get_osrm_data
 from src.database.models import GPSMaster, MatrixMaster
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
+import json
 
 class DistanceMatrixManager:
     """Manager class for distance matrix operations with threading support"""
@@ -20,9 +21,9 @@ class DistanceMatrixManager:
         Calculate distance and time between two GPS coordinates using OSRM.
         Returns (distance_km, duration_minutes).
         """
-        _, distance, duration = get_osrm_data((lat1,lon1), (lat2,lon2))
+        coords, distance, duration = get_osrm_data((lat1,lon1), (lat2,lon2))
         
-        return distance, duration
+        return distance, duration, coords
     
     def process_pending_updates(self):
         """
@@ -157,7 +158,7 @@ class DistanceMatrixManager:
         Returns dictionary with calculation results.
         """
         try:
-            distance, time = self.calculate_distance(
+            distance, time, coords = self.calculate_distance(
                 shop1.latitude, shop1.longitude,
                 shop2.latitude, shop2.longitude
             )
@@ -168,7 +169,8 @@ class DistanceMatrixManager:
                 'shop_code_1': shop1.shop_code,
                 'shop_code_2': shop2.shop_code,
                 'distance_km': distance,
-                'time_minutes': time
+                'time_minutes': time,
+                'coords':coords
             }
         except Exception as e:
             print(f"  ✗ Error calculating {shop1.shop_code} → {shop2.shop_code}: {e}")
@@ -190,9 +192,11 @@ class DistanceMatrixManager:
             if distance_data['shop_id_1'] == sid1:
                 scode1 = distance_data['shop_code_1']
                 scode2 = distance_data['shop_code_2']
+                coords = distance_data['coords']
             else:
                 scode1 = distance_data['shop_code_2']
                 scode2 = distance_data['shop_code_1']
+                coords = distance_data['coords'][::-1]
             
             # Check if this distance pair already exists
             existing = self.db.query(MatrixMaster).filter(
@@ -205,6 +209,7 @@ class DistanceMatrixManager:
                 # Update existing record
                 existing.distance_km = distance_data['distance_km']
                 existing.time_minutes = distance_data['time_minutes']
+                existing.coords = json.dumps(coords) if coords else None
                 existing.last_calculated = datetime.utcnow()
                 # self.db.commit()
                 print(f"  ✓ Updated: {scode1} ↔ {scode2} = {distance_data['distance_km']:.2f} km")
@@ -217,6 +222,7 @@ class DistanceMatrixManager:
                     shop_code_2=scode2,
                     distance_km=distance_data['distance_km'],
                     time_minutes=distance_data['time_minutes'],
+                    coords=json.dumps(coords) if coords else None,
                     last_calculated=datetime.utcnow()
                 )
                 self.db.add(new_distance)
