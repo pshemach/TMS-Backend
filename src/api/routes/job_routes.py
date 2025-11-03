@@ -147,6 +147,7 @@ def _enrich_route(route: models.JobRoute) -> schemas.VehicleRoute:
         vehicle_code=route.vehicle.vehicle_name,
         total_distance=route.total_distance,
         total_time=route.total_time,
+        folium_html=route.folium_html,
         stops=stops
     )
 

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, AnyHttpUrl
 from typing import Optional, List, Dict
 from datetime import date, datetime, time
 
@@ -275,6 +275,7 @@ class VehicleRoute(BaseModel):
     vehicle_code: str
     total_distance: Optional[float]
     total_time: Optional[float]
+    folium_html: Optional[str]
     stops: List[JobStopDetail]
 
 class JobResponse(BaseModel):
