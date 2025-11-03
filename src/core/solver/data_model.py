@@ -9,7 +9,7 @@ class ORDataModel:
     def __init__(self, db: Session, vehicles: List[models.Vehicles], orders: List[models.Order], use_time_windows: bool=False, depot_id: int=1):
         self.db = db
         self.depot_id = depot_id
-                
+        
         self.shop_ids = [o.shop_id for o in orders]
         self.all_nodes = [self.depot_id] + self.shop_ids  # depot = 1
         

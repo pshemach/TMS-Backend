@@ -272,7 +272,7 @@ class VehicleRoute(BaseModel):
     id: int
     job_id: int
     vehicle_id: int
-    vehicle_code: str
+    vehicle_name: str
     total_distance: Optional[float]
     total_time: Optional[float]
     folium_html: Optional[str]

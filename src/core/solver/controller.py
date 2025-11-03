@@ -19,15 +19,16 @@ def run_optimization_task(db: Session,request: schemas.OptimizeRequest,job_id: O
         
         orchestrator = Orchestrator(db=db, request=request)
         fixed_routes, optimized_routes = orchestrator.optimize_orchestrator()
-        print("++++++++++++")
-        print(fixed_routes)
-        print("++++++++++++")
-        print(optimized_routes)
         
         if job:
             orchestrator._save_job(db, job, (fixed_routes + optimized_routes))
         else:
             job = orchestrator._save_job(db, request["day"], (fixed_routes + optimized_routes))
+        
+        # Mark orders as active
+        order_ids = [o.id for r in (fixed_routes + optimized_routes) for o in r["orders"]]
+        if order_ids:
+            order_crud.mark_orders_active(order_ids, db)
         
         job.status = models.JobStatus.PLANNED
         db.commit()
@@ -58,7 +59,7 @@ class Orchestrator:
                 route_shop_ids.append(int(r['shop_id']))
             route_orders = [o for o in orders if o.shop_id in route_shop_ids]
             if route_orders:
-                optimized = self._optimize_single_vehicle_route(vehicles=v, orders=route_orders)
+                optimized = self._optimize_single_vehicle_route(vehicle=v, orders=route_orders)
                 if optimized:
                     predefined_optimized_routes.append(optimized)
                     
@@ -98,14 +99,15 @@ class Orchestrator:
                     
             else:
                 free.append(v)
-                
+        print(fixed, free)
         return free, fixed 
                 
                 
     def _optimize_single_vehicle_route(self,orders: List[models.Order], vehicle: models.Vehicles):
         data = ORDataModel(db=self.db, vehicles=[vehicle], orders=orders).get_data()
         visited, routes = VRPSolver().run_ortools_solver(data, [vehicle])
-        
+        print(routes)
+        print(data)
         if routes and 0 in routes and routes[0]["nodes"]:
             return {
                 "vehicle": vehicle,
@@ -117,6 +119,7 @@ class Orchestrator:
         data = ORDataModel(db=self.db, vehicles=vehicles, orders=orders).get_data()
         print(data)
         visited, routes = VRPSolver().run_ortools_solver(data=data, vehicles=vehicles)
+        print(routes)
         return [
             {
                 "vehicle": vehicles[i],
