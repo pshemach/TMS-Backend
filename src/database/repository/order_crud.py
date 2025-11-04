@@ -187,6 +187,88 @@ def delete_order(order_db_id: int, db: Session):
     db.commit()
     return {"message": f"Order {order_db_id} deleted"}
 
+
+def delete_order_and_jobs(db: Session, order_id: int) -> dict:
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail=f"Order with id {order_id} not found")
+
+    job_ids = set()
+
+    # Collect job_ids
+    if order.job_id:
+        job_ids.add(order.job_id)
+
+    stops_with_order = db.query(models.JobStop).filter(models.JobStop.order_id == order.order_id).all()
+    for stop in stops_with_order:
+        route = db.query(models.JobRoute).filter(models.JobRoute.id == stop.route_id).first()
+        if route and route.job_id:
+            job_ids.add(route.job_id)
+
+    print(f"Order {order.order_id} found in jobs: {job_ids}")
+
+    reset_order_count = 0
+
+    # Reset other orders in affected jobs
+    for job_id in job_ids:
+        # Reset via JobStop
+        other_order_ids = (
+            db.query(models.JobStop.order_id)
+            .join(models.JobRoute)
+            .filter(
+                models.JobRoute.job_id == job_id,
+                models.JobStop.order_id.isnot(None),
+                models.JobStop.order_id != order.order_id
+            )
+            .distinct()
+            .all()
+        )
+        other_order_ids = [oid[0] for oid in other_order_ids]
+
+        if other_order_ids:
+            updated = db.query(models.Order).filter(
+                models.Order.order_id.in_(other_order_ids)
+            ).update({
+                "job_id": None,
+                "status": models.OrderStatus.PENDING
+            }, synchronize_session='fetch')
+            reset_order_count += updated
+
+        # Also clear job_id from direct assignment
+        updated = db.query(models.Order).filter(
+            models.Order.job_id == job_id,
+            models.Order.id != order_id
+        ).update({
+            "job_id": None,
+            "status": models.OrderStatus.PENDING
+        }, synchronize_session='fetch')
+        reset_order_count += updated
+
+    db.flush()
+
+    # --- CRITICAL: Delete jobs via ORM to trigger cascade ---
+    deleted_jobs = 0
+    for job_id in job_ids:
+        job = db.query(models.Job).filter(models.Job.id == job_id).first()
+        if job:
+            db.delete(job)
+            deleted_jobs += 1
+    # ---
+
+    # Delete the order
+    db.delete(order)
+    db.commit()
+
+    return {
+        "status": "ok",
+        "message": f"Deleted order {order.order_id}",
+        "deleted_jobs": deleted_jobs,
+        "job_ids": list(job_ids),
+        "reset_orders": reset_order_count
+    }
+
+
+
 def mark_orders_active(order_ids: List[int], db: Session):
     db.query(models.Order).filter(
         models.Order.id.in_(order_ids),

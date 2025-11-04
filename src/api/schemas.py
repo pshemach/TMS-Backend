@@ -261,6 +261,9 @@ class JobStopDetail(BaseModel):
     shop_coords: dict
     arrival_time: Optional[time] = None
     departure_time: Optional[time] = None
+    order_id: Optional[str]
+    shop_location: Optional[str]
+    shop_address: Optional[str]
 
 class VehicleVisit(BaseModel):
     sequence: int

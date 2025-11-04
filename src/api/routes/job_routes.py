@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Path
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from datetime import date
 from src.database import database, models
 from src.api import schemas
 from src.database.repository.shops_curd import shop_coords
+from src.database.repository.order_crud import mark_orders_completed
+from src.database.repository import job_curd
+
 
 router = APIRouter(prefix="/job", tags=["job"])
 get_db = database.get_db
@@ -110,6 +113,60 @@ def get_job_routes(job_id: int, db: Session = Depends(get_db)):
     return [_enrich_route(r) for r in routes]
 
 
+@router.delete("/{job_id}")
+def delete_job_endpoint(
+    job_id: int = Path(..., description="Job ID to delete"),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a job and reset all its orders to PENDING.
+    
+    This will:
+    - Delete the job, routes, and stops (cascade)
+    - Reset all orders to status=PENDING and job_id=NULL
+    """
+    try:
+        result = job_curd.delete_job(db, job_id)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.patch("/{job_id}/complete")
+def mark_job_complete(
+    job_id: int = Path(..., description="Job ID to complete"),
+    db: Session = Depends(get_db)
+):
+    """Complete a job and assign all its orders."""
+    try:
+        job = job_curd.complete_job(db, job_id)
+        return {
+            "status": "ok",
+            "message": f"Job {job_id} completed successfully",
+            "job_id": job.id,
+            "job_status": job.status.value
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.patch("/{job_id}/cancel")
+def mark_job_canceled(
+    job_id: int = Path(..., description="Job ID to cancel"),
+    db: Session = Depends(get_db)
+):
+    """Cancel a job and reset its orders (keeps job record)."""
+    try:
+        job = job_curd.cancel_job(db, job_id)
+        return {
+            "status": "ok",
+            "message": f"Job {job_id} canceled successfully",
+            "job_id": job.id,
+            "job_status": job.status.value
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
 # === Helper: Enrich Job ===
 def _enrich_job(job: models.Job) -> schemas.JobResponse:
     routes = [_summarize_route(r) for r in job.routes]
@@ -154,13 +211,17 @@ def _enrich_route(route: models.JobRoute) -> schemas.VehicleRoute:
 
 # === Helper: Enrich Stop ===
 def _enrich_stop(stop: models.JobStop) -> schemas.JobStopDetail:
+    shop = stop.shop
     return schemas.JobStopDetail(
         sequence=stop.sequence,
         shop_id=stop.shop_id,
-        shop_code=stop.shop.shop_code,
+        shop_code=shop.shop_code,
         shop_coords=shop_coords(stop.shop),
         arrival_time=stop.arrival_time,
-        departure_time=stop.departure_time
+        departure_time=stop.departure_time,
+        order_id=stop.order_id,  
+        shop_location=shop.location,  
+        shop_address=shop.address  
     )
 
 

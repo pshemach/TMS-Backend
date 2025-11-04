@@ -9,6 +9,7 @@ class ORDataModel:
     def __init__(self, db: Session, vehicles: List[models.Vehicles], orders: List[models.Order], use_time_windows: bool=False, depot_id: int=1):
         self.db = db
         self.depot_id = depot_id
+        self.orders = orders
         
         self.shop_ids = [o.shop_id for o in orders]
         self.all_nodes = [self.depot_id] + self.shop_ids  # depot = 1
@@ -22,12 +23,16 @@ class ORDataModel:
         self.order_groups = self._fetch_order_groups(orders)
         self.geo_constrains = self._fetch_geo_constraints(self.db)
         
+        self.order_map = self._build_order_map(orders)
+        
         self.matrix = self.time_matrix if self.use_time else self.distance_matrix
     
     
     def get_data(self):
         return {
             "matrix": self.matrix,
+            "distance_matrix": self.distance_matrix,
+            "time_matrix": self.time_matrix,
             "demands":[0] + [1]*len(self.shop_ids),
             "node_mapping":self.all_nodes,
             "num_vehicles":len(self.max_distance_per_vehicle),
@@ -38,7 +43,8 @@ class ORDataModel:
             "order_groups": self.order_groups, 
             "geo_constrains": self.geo_constrains,
             "time_windows":self.time_windows,
-            "use_time_matrix":self.use_time
+            "use_time_matrix":self.use_time,
+            "order_map": self.order_map,
         }
     
     def _get_matrix(self, all_nodes: List[int]):       
@@ -180,6 +186,36 @@ class ORDataModel:
                 structured_constraints.append(constraint)
         
         return structured_constraints
+    
+    def _build_order_map(self, orders: List[models.Order]) -> Dict[int, Dict]:
+        """Build mapping of node_index to order info.
+        
+        Since each order is a separate node, we map node index (1-based) to order details.
+        
+        Returns:
+            Dictionary mapping node_index -> order info dict
+            Example: {
+                1: {"id": 1, "order_id": "ORD-001", "shop_id": 5, "priority": "HIGH"},
+                2: {"id": 2, "order_id": "ORD-002", "shop_id": 5, "priority": "MEDIUM"},
+                3: {"id": 3, "order_id": "ORD-003", "shop_id": 8, "priority": "LOW"}
+            }
+        """
+        order_map = {}
+        
+        for idx, order in enumerate(orders, start=1):  # Start from 1 (depot is 0)
+            order_info = {
+                "id": order.id,
+                "order_id": order.order_id,
+                "shop_id": order.shop_id,
+                "priority": order.priority.value if hasattr(order, 'priority') and order.priority else "MEDIUM",
+                "po_value": getattr(order, 'po_value', None),
+                "volume": getattr(order, 'volume', None),
+                "time_window_start": str(order.time_window_start) if order.time_window_start else None,
+                "time_window_end": str(order.time_window_end) if order.time_window_end else None
+            }
+            order_map[idx] = order_info
+        
+        return order_map
                 
     
     def _to_minutes(self, t: Optional[Union[time, str]]) -> Optional[int]:
@@ -196,7 +232,7 @@ class ORDataModel:
                 if len(parts) >= 2:
                     h = int(parts[0])
                     m = int(parts[1])
-                    return h * 60 + m
+                    return (h * 60) + m
             except Exception:
                 return None
         return None

@@ -173,10 +173,14 @@ class Order(Base):
     time_window_end = Column(Time, nullable=True)    # e.g., 17:00:00
     priority = Column(Enum(Priority), nullable=True, default=Priority.MEDIUM)
 
+    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True, index=True)
+
+
     # Relationships
     shop = relationship("GPSMaster")
     group = relationship("OrderGroup", back_populates="orders", secondary="order_group_link")
-
+    job = relationship("Job", back_populates="orders")  
+    
     __table_args__ = (UniqueConstraint('order_id', name='uix_order_id'),)
     
     
@@ -215,13 +219,13 @@ class Job(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     routes = relationship("JobRoute", back_populates="job", cascade="all, delete-orphan")
-
+    orders = relationship("Order", back_populates="job")
 
 class JobRoute(Base):
     __tablename__ = "job_routes"
 
     id = Column(Integer, primary_key=True, index=True)
-    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
+    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
     vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=False)
     total_distance = Column(Float, nullable=True)
     total_time = Column(Float, nullable=True)
@@ -237,11 +241,16 @@ class JobStop(Base):
     __tablename__ = "job_stops"
 
     id = Column(Integer, primary_key=True, index=True)
-    route_id = Column(Integer, ForeignKey("job_routes.id"), nullable=False)
+    route_id = Column(Integer, ForeignKey("job_routes.id", ondelete="CASCADE"), nullable=False)
     shop_id = Column(Integer, ForeignKey("master_gps.id"), nullable=False)
     sequence = Column(Integer, nullable=False)
+    order_id = Column(String, nullable=True)  # Already correct - matches Order.order_id type
     arrival_time = Column(Time, nullable=True)
     departure_time = Column(Time, nullable=True)
 
     route = relationship("JobRoute", back_populates="stops")
     shop = relationship("GPSMaster")
+    # Add this relationship to query the order from a stop
+    order = relationship("Order", foreign_keys=[order_id], 
+                        primaryjoin="JobStop.order_id==Order.order_id",
+                        viewonly=True)  # viewonly=True since no FK constraint

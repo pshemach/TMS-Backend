@@ -31,7 +31,7 @@ def run_optimization_task(db: Session,request: schemas.OptimizeRequest,job_id: O
         order_ids = [o.id for r in (fixed_routes + optimized_routes) for o in r["orders"]]
         if order_ids:
             order_crud.mark_orders_active(order_ids, db)
-        
+            
         job.status = models.JobStatus.PLANNED
         db.commit()
     except Exception as e:
@@ -133,10 +133,8 @@ class Orchestrator:
         
         
     def _save_job(self, db: Session, job_or_day, routes_data):
-        """Save routes into a Job.
-
-        If job_or_day is a Job instance, use it; otherwise treat it as day and create a new Job.
-        """
+        """Save routes into a Job with order tracking and proper timing."""
+        
         if isinstance(job_or_day, models.Job):
             job = job_or_day
             job.status = models.JobStatus.RUNNING
@@ -152,62 +150,98 @@ class Orchestrator:
         for route_idx, r in enumerate(routes_data):
             print(f"\n--- Processing Route {route_idx + 1}/{len(routes_data)} ---")
             
-            # Get path and timing data
-            path = r.get("path", [])
-            solver_data = path.get("nodes", []) if isinstance(path, dict) else path
-            arrival_times = path.get("arrival_times", []) if isinstance(path, dict) else None
+            # Get path data
+            path = r.get("path", {})
+            solver_nodes = path.get("nodes", [])
+            orders_sequence = path.get("orders", [])
+            arrival_times = path.get("arrival_times", [])
+            departure_times = path.get("departure_times", [])
             
-            print(f"Route nodes: {solver_data}")
+            print(f"Route nodes: {solver_nodes}")
+            print(f"Route orders: {[o['order_id'] for o in orders_sequence]}")
             print(f"Vehicle: {r['vehicle'].id}")
+            print(f"Total distance: {path.get('total_distance')} km")
+            print(f"Total time: {path.get('total_time')} minutes")
             
+            # Create route record
             route = models.JobRoute(
                 job_id=job.id,
                 vehicle_id=r["vehicle"].id,
-                total_distance=path.get("total_distance") if isinstance(path, dict) else None,
-                total_time=path.get("total_time") if isinstance(path, dict) else None
+                total_distance=path.get("total_distance"),
+                total_time=path.get("total_time")
             )
             db.add(route)
             db.flush()
             print(f"Created JobRoute with ID: {route.id}")
 
-            # Save all stops including depot
-            for seq, shop_id in enumerate(solver_data):
+            # Track which order we're processing
+            order_idx = 0
+            
+            # Save stops with order tracking and timing
+            for seq, shop_id in enumerate(solver_nodes):
+                # Check if this stop has an order
+                order_id_value = None
+                if order_idx < len(orders_sequence):
+                    current_order = orders_sequence[order_idx]
+                    # Only assign order_id if this shop matches the order's shop
+                    if current_order["shop_id"] == shop_id:
+                        order_id_value = current_order["order_id"]
+                        order_idx += 1
+                
                 stop = models.JobStop(
                     route_id=route.id,
                     shop_id=shop_id,
+                    order_id=order_id_value,
                     sequence=seq
                 )
 
-                # Add timing if available
+                # Add timing from calculated times
                 if arrival_times and seq < len(arrival_times):
-                    minutes = arrival_times[seq]
+                    minutes = int(arrival_times[seq])
                     hours = minutes // 60
                     mins = minutes % 60
-                    # Persist as proper time objects
                     stop.arrival_time = time(int(hours % 24), int(mins % 60))
+                    
+                    print(f"  Stop {seq} arrival: {stop.arrival_time}")
 
-                    # Set departure time as arrival time + service time (assumed 15 minutes)
-                    dep_minutes = minutes + 15
-                    dep_hours = dep_minutes // 60
-                    dep_mins = dep_minutes % 60
-                    stop.departure_time = time(int(dep_hours % 24), int(dep_mins % 60))
+                if departure_times and seq < len(departure_times):
+                    minutes = int(departure_times[seq])
+                    hours = minutes // 60
+                    mins = minutes % 60
+                    stop.departure_time = time(int(hours % 24), int(mins % 60))
+                    
+                    print(f"  Stop {seq} departure: {stop.departure_time}")
 
                 db.add(stop)
+                
+                if order_id_value:
+                    print(f"  Stop {seq}: shop_id={shop_id}, order_id={order_id_value}")
             
-            print(f"Added {len(solver_data)} stops")
+            print(f"Added {len(solver_nodes)} stops")
 
-            # Build and store Folium map for this route
+            # Update order status to PLANED (don't assign job_id yet)
+            for order_info in orders_sequence:
+                order_obj = db.query(models.Order).filter(
+                    models.Order.order_id == order_info["order_id"]
+                ).first()
+                
+                if order_obj:
+                    order_obj.status = models.OrderStatus.PLANED
+                    # DO NOT SET job_id here - only when job is COMPLETED
+                    print(f"  Updated order {order_obj.order_id} status to PLANED")
+
+            # Generate and store Folium map
             print(f"Generating map for route {route.id}...")
             try:
-                map_html = self._generate_route_map(db, solver_data)
+                map_html = self._generate_route_map(db, solver_nodes)
                 if map_html:
                     route.folium_html = map_html
-                    print(f"✓ Map generated and assigned to route {route.id} (length: {len(map_html)} chars)")
+                    print(f"✓ Map generated ({len(map_html)} chars)")
                 else:
-                    print(f"✗ Map generation returned None for route {route.id}")
+                    print(f"✗ Map generation returned None")
                     route.folium_html = None
             except Exception as e:
-                print(f"✗✗✗ Exception during map generation for route {route.id}: {e}")
+                print(f"✗✗✗ Map generation error: {e}")
                 import traceback
                 traceback.print_exc()
                 route.folium_html = None
@@ -219,7 +253,7 @@ class Orchestrator:
         db.refresh(job)
         print(f"=== JOB {job.id} SAVED SUCCESSFULLY ===\n")
         return job
-    
+        
     def _generate_route_map(self, db: Session, solver_data: List[int]) -> Optional[str]:
         """
         Generate Folium map HTML for a route using cached paths from database.

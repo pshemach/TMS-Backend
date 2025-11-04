@@ -38,17 +38,6 @@ def create(request: schemas.OrderCreate, db: Session = Depends(get_db)):
     return _enrich(order)
 
 
-# @router.get("/", response_model=List[schemas.OrderResponse])
-# def list_all(
-#     shop_id: Optional[int] = None,
-#     date_from: Optional[date] = None,
-#     date_to: Optional[date] = None,
-#     db: Session = Depends(get_db)
-# ):
-#     orders = ops.all_orders(db, shop_id, date_from, date_to)
-#     return [_enrich(o) for o in orders]
-
-
 @router.get("/{id}", response_model=schemas.OrderResponse)
 def get_one(id: int, db: Session = Depends(get_db)):
     order = ops.get_order(id, db)
@@ -73,7 +62,10 @@ def update(id: str, request: schemas.OrderUpdate, db: Session = Depends(get_db))
 
 @router.delete("/{id}", status_code=status.HTTP_200_OK)
 def delete(id: int, db: Session = Depends(get_db)):
-    return ops.delete_order(id, db)
+    order = db.query(models.Order).filter(models.Order.id==id).first()
+    if order.status == models.OrderStatus.COMPLETED:
+        raise HTTPException(status_code=400, detail=f"Order {order.order_id} has already completed")
+    return ops.delete_order_and_jobs(db, id)
 
 @router.get("/", response_model=List[schemas.OrderResponse])
 def list_all(

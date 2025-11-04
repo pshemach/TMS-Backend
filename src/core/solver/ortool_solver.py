@@ -188,46 +188,114 @@ class VRPSolver:
     
     def _extract_solution(self, manager, routing, solution, data):
         routes = {}
-        time_dimension = routing.GetDimensionOrDie('Time') if data.get("time_windows") else None
-        # Distance dimension is enforced separately; not required for extraction here
+        order_map = data.get("order_map", {})
+        distance_matrix = data.get("distance_matrix")
+        time_matrix = data.get("time_matrix")
+        use_time_matrix = data.get("use_time_matrix", False)
+        
+        
+            # Check if Time dimension exists (for time windows)
+        time_dimension = None
+        try:
+            if data.get("time_windows"):
+                time_dimension = routing.GetDimensionOrDie('Time')
+        except:
+            pass
         
         for v in range(routing.vehicles()):
             index = routing.Start(v)
-            route = []
-            times = []
-            total_time = 0
-            total_distance = 0
+            route_nodes = []
+            order_sequence = []
             
+                # Collect all nodes in the route first
             while not routing.IsEnd(index):
                 node_idx = manager.IndexToNode(index)
-                next_idx = solution.Value(routing.NextVar(index))
-                next_node_idx = manager.IndexToNode(next_idx)
+                shop_id = data["node_mapping"][node_idx]
+                route_nodes.append(shop_id)
+            
+                      # Get order info for this node (skip depot at index 0)
+                if node_idx > 0 and node_idx in order_map:
+                    order_info = order_map[node_idx]
+                    order_sequence.append(order_info)
                 
-                route.append(data["node_mapping"][node_idx])
-                
-                if time_dimension:
-                    time_var = time_dimension.CumulVar(index)
-                    times.append(solution.Min(time_var))
-                    # Add transit time to total
-                    total_time += data["matrix"][node_idx][next_node_idx]
-                
-                if not routing.IsEnd(next_idx):
-                    # Add distance to total
-                    total_distance += data["matrix"][node_idx][next_node_idx]
-                
-                index = next_idx
-                
-            # Include the last node (return to depot)
-            route.append(data["node_mapping"][manager.IndexToNode(index)])
-            if time_dimension:
-                time_var = time_dimension.CumulVar(index)
-                times.append(solution.Min(time_var))
-                
+                index = solution.Value(routing.NextVar(index))
+                    
+            # Add final node (return to depot)
+            final_node_idx = manager.IndexToNode(index)
+            route_nodes.append(data["node_mapping"][final_node_idx])
+            
+            # Calculate distances and times
+            total_distance = 0
+            total_time = 0
+            arrival_times = []
+            departure_times = []
+            
+            current_time = 480  # Start at 8:00 AM (480 minutes)
+            service_time = 15  # 15 minutes per stop
+            
+            for i in range(len(route_nodes)):
+                if i == 0:
+                    # Depot start
+                    arrival_times.append(current_time)
+                    departure_times.append(current_time)
+                else:
+                    # Calculate travel from previous node
+                    from_node = route_nodes[i - 1]
+                    to_node = route_nodes[i]
+                    
+                    from_idx = data["node_mapping"].index(from_node)
+                    to_idx = data["node_mapping"].index(to_node)
+                    
+                    # Always calculate distance
+                    if distance_matrix:
+                        travel_distance = distance_matrix[from_idx][to_idx]
+                        total_distance += travel_distance
+                    
+                    # Calculate time
+                    if time_dimension:
+                        # Use solver's Time dimension if available
+                        node_index = None
+                        temp_index = routing.Start(v)
+                        pos = 0
+                        while not routing.IsEnd(temp_index):
+                            if pos == i:
+                                node_index = temp_index
+                                break
+                            temp_index = solution.Value(routing.NextVar(temp_index))
+                            pos += 1
+                        
+                        if node_index is not None:
+                            time_var = time_dimension.CumulVar(node_index)
+                            current_time = solution.Min(time_var)
+                    elif time_matrix:
+                        # Calculate from time matrix
+                        travel_time = time_matrix[from_idx][to_idx]
+                        current_time += travel_time
+                        total_time += travel_time
+                    else:
+                        # Fallback: estimate from distance (assuming 40 km/h average speed)
+                        if distance_matrix:
+                            travel_time = int((distance_matrix[from_idx][to_idx] / 40) * 60)  # minutes
+                            current_time += travel_time
+                            total_time += travel_time
+                    
+                    # Arrival at this stop
+                    arrival_times.append(current_time)
+                    
+                    # Departure after service (except last depot)
+                    if i < len(route_nodes) - 1:
+                        current_time += service_time
+                        total_time += service_time
+                    
+                    departure_times.append(current_time)
+            
             routes[v] = {
-                "nodes": route,  # Include all nodes including depot
-                "arrival_times": times if time_dimension else None,
+                "nodes": route_nodes,
+                "orders": order_sequence,
+                "arrival_times": arrival_times,
+                "departure_times": departure_times,
                 "total_distance": total_distance,
-                "total_time": total_time if time_dimension else None
+                "total_time": total_time
             }
         
         return set(), routes
