@@ -182,7 +182,7 @@ class OrderUpdate(BaseModel):
 
     @validator("status")
     def validate_status(cls, v):
-        if v and v not in {"pending", "active", "completed"}:
+        if v and v not in {"pending", "planed", "active", "completed"}:
             raise ValueError("status must be pending, active, or completed")
         return v
 

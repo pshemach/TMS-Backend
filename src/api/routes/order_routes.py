@@ -77,7 +77,7 @@ def list_all(
     q = db.query(models.Order).options(joinedload(models.Order.shop))
     
     if status:
-        if status not in {"pending", "active", "completed"}:
+        if status not in {"pending", "planed", "active", "completed"}:
             raise HTTPException(status_code=400, detail="Invalid status")
         q = q.filter(models.Order.status == models.OrderStatus(status))
     

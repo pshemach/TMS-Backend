@@ -177,7 +177,7 @@ def _enrich_job(job: models.Job) -> schemas.JobResponse:
         status=job.status.value,
         created_at=job.created_at,
         total_routes=len(routes),
-        total_stops=sum(len(r.stops) for r in job.routes),
+        total_stops=sum(r.stop_count for r in routes),
         routes=routes
     )
 
