@@ -94,15 +94,15 @@ class MapManager:
                     # Draw solid route line
                     folium.PolyLine(
                             locations=segment,
-                            color="#5EFF66",
-                            weight=6,
+                            color="#1E90FF",
+                            weight=5,
                             opacity=0.8,
                             popup=f"Segment {idx + 1}"
                         ).add_to(fmap)
                     # Add animated ant path overlay
                     plugins.AntPath(
                             locations=segment,
-                            color="#FF6B6B", 
+                            color="#F08080", 
                             weight=2,
                             opacity=0.6,
                             delay=500,  # Animation speed (ms)
@@ -116,14 +116,14 @@ class MapManager:
             # Fallback: draw animated straight lines
             folium.PolyLine(
                     locations=shop_coords,
-                    color="#5EFF66",
-                    weight=6,
+                    color="#1E90FF",
+                    weight=5,
                     opacity=0.6,
                     dash_array='10'
                 ).add_to(fmap)  
             plugins.AntPath(
                     locations=shop_coords,
-                    color="#FF6B6B",
+                    color="#F08080",
                     weight=2,
                     opacity=0.5,
                     delay=1000,
@@ -184,10 +184,10 @@ class MapManager:
                         box-shadow: 0 2px 5px rgba(0,0,0,0.3);">
                 <h4 style="margin: 0 0 10px 0;">Legend</h4>
                 <div style="margin: 5px 0;">
-                    <span style="color: #5EFF66; font-weight: bold;">━━━</span> Route Path
+                    <span style="color: #1E90FF; font-weight: bold;">━━━</span> Route Path
                 </div>
                 <div style="margin: 5px 0;">
-                    <span style="color: #FF6B6B; font-weight: bold;">- - -</span> Direction
+                    <span style="color: #F08080; font-weight: bold;">- - -</span> Direction
                 </div>
                 <div style="margin: 5px 0;">
                     <i class="fa fa-home" style="color: green;"></i> Depot
