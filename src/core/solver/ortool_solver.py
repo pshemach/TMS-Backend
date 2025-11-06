@@ -232,13 +232,18 @@ class VRPSolver:
         time_matrix = data.get("time_matrix")
         use_time_matrix = data.get("use_time_matrix", False)
         
-        # Get time dimension if available
+        # Get dimensions if available
         time_dimension = None
+        distance_dimension = None
+        
         try:
-            if data.get("time_windows"):
+            if use_time_matrix:
                 time_dimension = routing.GetDimensionOrDie('Time')
+                distance_dimension = routing.GetDimensionOrDie('Distance')
         except:
             pass
+        
+        service_time = 15  # 15 minutes per stop
         
         for v in range(routing.vehicles()):
             index = routing.Start(v)
@@ -271,64 +276,90 @@ class VRPSolver:
             arrival_times = []
             departure_times = []
             
-            service_time = 15  # 15 minutes per stop
-            
-            for i in range(len(route_nodes)):
-                if i == 0:
-                    # Depot start
-                    if time_dimension:
-                        start_var = time_dimension.CumulVar(route_indices[i])
-                        start_time = solution.Min(start_var)
+            if use_time_matrix and time_dimension:
+                # Use time dimension from OR-Tools solution
+                for i, idx in enumerate(route_indices):
+                    time_var = time_dimension.CumulVar(idx)
+                    arrival_time = solution.Min(time_var)
+                    arrival_times.append(arrival_time)
+                    
+                    # Departure time = arrival + service time (except depot)
+                    node_idx = manager.IndexToNode(idx)
+                    if node_idx == 0:  # Depot
+                        departure_times.append(arrival_time)
                     else:
-                        start_time = 480  # 8:00 AM
-                    
-                    arrival_times.append(start_time)
-                    departure_times.append(start_time)
-                    current_time = start_time
+                        # For non-depot, add service time
+                        if i < len(route_indices) - 1:  # Not the final depot
+                            departure_times.append(arrival_time + service_time)
+                        else:
+                            departure_times.append(arrival_time)
+                
+                # Calculate total time from time dimension
+                start_time = arrival_times[0]
+                end_time = arrival_times[-1]
+                total_time = end_time - start_time
+                
+                # Calculate total distance from distance dimension
+                if distance_dimension:
+                    dist_var = distance_dimension.CumulVar(route_indices[-1])
+                    total_distance = solution.Min(dist_var)
                 else:
-                    # Calculate travel
-                    from_node = route_nodes[i - 1]
-                    to_node = route_nodes[i]
-                    
-                    from_idx = data["node_mapping"].index(from_node)
-                    to_idx = data["node_mapping"].index(to_node)
-                    
-                    # Distance
-                    if distance_matrix:
-                        travel_distance = distance_matrix[from_idx][to_idx]
-                        total_distance += travel_distance
-                    
-                    # Time
-                    if time_dimension:
-                        time_var = time_dimension.CumulVar(route_indices[i])
-                        current_time = solution.Min(time_var)
-                    elif time_matrix:
-                        travel_time = time_matrix[from_idx][to_idx]
+                    # Fallback: calculate from matrix
+                    for i in range(len(route_nodes) - 1):
+                        from_node = route_nodes[i]
+                        to_node = route_nodes[i + 1]
+                        from_idx = data["node_mapping"].index(from_node)
+                        to_idx = data["node_mapping"].index(to_node)
+                        total_distance += distance_matrix[from_idx][to_idx]
+            
+            else:
+                # Fallback: manual calculation without time dimension
+                current_time = 480  # 8:00 AM default start
+                
+                for i in range(len(route_nodes)):
+                    if i == 0:
+                        # Depot start
+                        arrival_times.append(current_time)
+                        departure_times.append(current_time)
+                    else:
+                        # Calculate travel
+                        from_node = route_nodes[i - 1]
+                        to_node = route_nodes[i]
+                        
+                        from_idx = data["node_mapping"].index(from_node)
+                        to_idx = data["node_mapping"].index(to_node)
+                        
+                        # Distance
+                        if distance_matrix:
+                            travel_distance = distance_matrix[from_idx][to_idx]
+                            total_distance += travel_distance
+                        
+                        # Time
+                        if time_matrix:
+                            travel_time = time_matrix[from_idx][to_idx]
+                        else:
+                            # Estimate from distance (40 km/h average)
+                            travel_time = int((travel_distance / 40) * 60) if distance_matrix else 0
+                        
                         current_time += travel_time
                         total_time += travel_time
-                    else:
-                        # Estimate from distance
-                        if distance_matrix:
-                            travel_time = int((distance_matrix[from_idx][to_idx] / 40) * 60)
-                            current_time += travel_time
-                            total_time += travel_time
-                    
-                    arrival_times.append(current_time)
-                    
-                    # Service time (except last depot)
-                    if i < len(route_nodes) - 1:
-                        if not time_dimension:
+                        
+                        arrival_times.append(current_time)
+                        
+                        # Service time (except last depot)
+                        if i < len(route_nodes) - 1:
                             current_time += service_time
                             total_time += service_time
-                    
-                    departure_times.append(current_time)
+                        
+                        departure_times.append(current_time)
             
             # Add time window info to orders
-            for idx, order_info in enumerate(order_sequence):
-                node_index = idx + 1  # Skip depot
-                if node_index < len(arrival_times):
-                    order_info['arrival_time'] = arrival_times[node_index]
-                    order_info['departure_time'] = departure_times[node_index]
+            order_index = 0
+            for i in range(1, len(route_nodes) - 1):  # Skip first and last depot
+                if order_index < len(order_sequence):
+                    order_sequence[order_index]['arrival_time'] = arrival_times[i]
+                    order_sequence[order_index]['departure_time'] = departure_times[i]
+                    order_index += 1
             
             routes[v] = {
                 "nodes": route_nodes,
