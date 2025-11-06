@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from typing import Optional, Union, List, Dict, Tuple
-from datetime import datetime, time
+from datetime import time
 from src.database import models
 from src.database.repository import order_crud
 from src.core.solver.data_model import ORDataModel
@@ -9,41 +9,41 @@ from src.api import schemas
 from src.core.solver.ortool_solver import VRPSolver
 from src.core.map_manager import MapManager
 from src.utils.map_utils import get_path_coordinates
-import folium
-from folium import plugins
-
+from src.logger import logging
+from src.exception import TMSException
+import sys
 
 def run_optimization_task(db: Session,request: schemas.OptimizeRequest,job_id: Optional[int]=None):
-    
-    job =None
     try:
-        if job_id:
-            job = db.query(models.Job).filter(models.Job.id == job_id).first()
+
+        job = db.query(models.Job).filter(models.Job.id == job_id).first()
+        if not job:
+            logging.debug(f"Job with id {job_id} has not found")
+            raise TMSException(f"Job with id {job_id} has not found", sys)
         
         orchestrator = Orchestrator(db=db, request=request)
         fixed_routes, optimized_routes = orchestrator.optimize_orchestrator()
         
-        if job:
-            orchestrator._save_job(db, job, (fixed_routes + optimized_routes))
-        else:
-            job = orchestrator._save_job(db, request["day"], (fixed_routes + optimized_routes))
+        # Save route data in database
+        all_routes = (fixed_routes + optimized_routes)
+        _ = orchestrator._save_job(db, job, all_routes)
         
-        # Mark orders as active
-        order_ids = [o.id for r in (fixed_routes + optimized_routes) for o in r["orders"]]
+        # Update planed orders status
+        order_ids = [o.id for r in all_routes for o in r["orders"]]
         if order_ids:
-            order_crud.mark_orders_active(order_ids, db)
+            order_crud.mark_orders_planed(order_ids, db)
+            logging.info("Changed order status: 'planed'")
             
-        job.status = models.JobStatus.PLANNED
-        db.commit()
     except Exception as e:
-        print(f"optimization failed: {e}")
+        logging.error(f"optimization failed: {e}")
+        raise TMSException(e, sys)
 
 
 class Orchestrator:
     def __init__(self, db: Session, request: schemas.OptimizeRequest):
         self.db = db
         self.request = request
-        self.free_vehicles, self.fixed_vehicles = self._split_vehicles()
+        (self.free_vehicles, self.fixed_vehicles) = self._split_vehicles()
         
     def optimize_orchestrator(self):
         """process uncompleted orders"""
@@ -77,40 +77,47 @@ class Orchestrator:
     
     
     def _split_vehicles(self):
-        fixed = []
-        free = []
-        
-        selected_vehicle_ids = [v.vehicle_id for v in self.request.vehicles]
-        vehicle_route_mapping = {v.vehicle_id:v.predefined_route_id for v in self.request.vehicles if  v.predefined_route_id}
-        
-        vehicles = self.db.query(models.Vehicles).filter(
-            models.Vehicles.id.in_(selected_vehicle_ids)
-            ).all()
-        
-        for v in vehicles:
-            if v.id in vehicle_route_mapping:
-                route_id = vehicle_route_mapping[v.id]
-                
-                route = self.db.query(models.PredefinedRoute).filter(
-                    models.PredefinedRoute.id == route_id
-                    ).first()
-                
-                if route:
-                    fixed.append((v, route))
+        try:
+            fixed = []
+            free = []
+            
+            selected_vehicle_ids = [v.vehicle_id for v in self.request.vehicles]
+            vehicle_route_mapping = {v.vehicle_id:v.predefined_route_id for v in self.request.vehicles if  v.predefined_route_id}
+            
+            vehicles = self.db.query(models.Vehicles).filter(
+                models.Vehicles.id.in_(selected_vehicle_ids)
+                ).all()
+            
+            logging.info(f"Total vehicles for optimization: {len(vehicles)}")
+            
+            for v in vehicles:
+                if v.id in vehicle_route_mapping:
+                    route_id = vehicle_route_mapping[v.id]
+                    
+                    route = self.db.query(models.PredefinedRoute).filter(
+                        models.PredefinedRoute.id == route_id
+                        ).first()
+                    
+                    if route:
+                        fixed.append((v, route))
+                    else:
+                        free.append(v)
+                        
                 else:
                     free.append(v)
                     
-            else:
-                free.append(v)
-        print(fixed, free)
-        return free, fixed 
-                
+            logging.info(f"Predefined routes assigned vehicles: {len(fixed)}")
+            logging.info(f"Number of free vehicles: {len(free)}")
+            
+            return (free, fixed )
+        except Exception as e:
+            logging.error(f"Vehicle splitting failed: {e}")
+            raise TMSException(e, sys)
                 
     def _optimize_single_vehicle_route(self,orders: List[models.Order], vehicle: models.Vehicles):
+        """Optimize vehicle with pre defined routes"""
         data = ORDataModel(db=self.db, vehicles=[vehicle], orders=orders).get_data()
-        visited, routes = VRPSolver().run_ortools_solver(data, [vehicle])
-        print(routes)
-        print(data)
+        routes = VRPSolver().run_ortools_solver(data, [vehicle])
         if routes and 0 in routes and routes[0]["nodes"]:
             return {
                 "vehicle": vehicle,
@@ -119,10 +126,10 @@ class Orchestrator:
             }
             
     def _optimize_free_vehicles(self, orders: List[models.Order], vehicles: List[models.Vehicles]):
+        """vrp for no routes assigned"""
         data = ORDataModel(db=self.db, vehicles=vehicles, orders=orders).get_data()
-        print(data)
-        visited, routes = VRPSolver().run_ortools_solver(data=data, vehicles=vehicles)
-        print(routes)
+        routes = VRPSolver().run_ortools_solver(data=data, vehicles=vehicles)
+        
         return [
             {
                 "vehicle": vehicles[i],
@@ -133,125 +140,86 @@ class Orchestrator:
             ]
         
         
-    def _save_job(self, db: Session, job_or_day, routes_data):
-        """Save routes into a Job with order tracking and proper timing."""
-        
-        if isinstance(job_or_day, models.Job):
-            job = job_or_day
-            job.status = models.JobStatus.RUNNING
-            db.flush()
-        else:
-            day = job_or_day
-            job = models.Job(name=f"Delivery {day}", day=day, status=models.JobStatus.RUNNING)
-            db.add(job)
-            db.flush()
-
-        print(f"\n=== SAVING JOB {job.id} WITH {len(routes_data)} ROUTES ===")
-
-        for route_idx, r in enumerate(routes_data):
-            print(f"\n--- Processing Route {route_idx + 1}/{len(routes_data)} ---")
-            
-            # Get path data
-            path = r.get("path", {})
-            solver_nodes = path.get("nodes", [])
-            orders_sequence = path.get("orders", [])
-            arrival_times = path.get("arrival_times", [])
-            departure_times = path.get("departure_times", [])
-            
-            print(f"Route nodes: {solver_nodes}")
-            print(f"Route orders: {[o['order_id'] for o in orders_sequence]}")
-            print(f"Vehicle: {r['vehicle'].id}")
-            print(f"Total distance: {path.get('total_distance')} km")
-            print(f"Total time: {path.get('total_time')} minutes")
-            
-            # Create route record
-            route = models.JobRoute(
-                job_id=job.id,
-                vehicle_id=r["vehicle"].id,
-                total_distance=path.get("total_distance"),
-                total_time=path.get("total_time")
-            )
-            db.add(route)
-            db.flush()
-            print(f"Created JobRoute with ID: {route.id}")
-
-            # Track which order we're processing
-            order_idx = 0
-            
-            # Save stops with order tracking and timing
-            for seq, shop_id in enumerate(solver_nodes):
-                # Check if this stop has an order
-                order_id_value = None
-                if order_idx < len(orders_sequence):
-                    current_order = orders_sequence[order_idx]
-                    # Only assign order_id if this shop matches the order's shop
-                    if current_order["shop_id"] == shop_id:
-                        order_id_value = current_order["order_id"]
-                        order_idx += 1
-                
-                stop = models.JobStop(
-                    route_id=route.id,
-                    shop_id=shop_id,
-                    order_id=order_id_value,
-                    sequence=seq
+    def _save_job(self, db: Session, job: models.Job, routes_data: Dict):
+        """Save routes into a Job with order tracking and proper timing."""       
+        try:
+            for route_idx, route_data in enumerate(routes_data):            
+                # Get path data
+                path = route_data.get("path", {})
+                solver_nodes = path.get("nodes", [])
+                orders_sequence = path.get("orders", [])
+                arrival_times = path.get("arrival_times", [])
+                departure_times = path.get("departure_times", [])
+                total_distance=  path.get("total_distance", 0)
+                total_time= path.get("total_time", 0)
+                            
+                # Create route record
+                route = models.JobRoute(
+                    job_id=job.id,
+                    vehicle_id=route_data["vehicle"].id,
+                    total_distance=total_distance,
+                    total_time=total_time
                 )
+                db.add(route)
+                db.flush()
+                logging.info(f"Route {route.id} added to database for job {job.id}")
 
-                # Add timing from calculated times
-                if arrival_times and seq < len(arrival_times):
-                    minutes = int(arrival_times[seq])
-                    hours = minutes // 60
-                    mins = minutes % 60
-                    stop.arrival_time = time(int(hours % 24), int(mins % 60))
-                    
-                    print(f"  Stop {seq} arrival: {stop.arrival_time}")
-
-                if departure_times and seq < len(departure_times):
-                    minutes = int(departure_times[seq])
-                    hours = minutes // 60
-                    mins = minutes % 60
-                    stop.departure_time = time(int(hours % 24), int(mins % 60))
-                    
-                    print(f"  Stop {seq} departure: {stop.departure_time}")
-
-                db.add(stop)
+                # Track which order we're processing
+                order_idx = 0
                 
-                if order_id_value:
-                    print(f"  Stop {seq}: shop_id={shop_id}, order_id={order_id_value}")
-            
-            print(f"Added {len(solver_nodes)} stops")
+                # Save stops with order tracking and timing
+                for seq, shop_id in enumerate(solver_nodes):
+                    # Check if this stop has an order
+                    order_id_value = None
+                    if order_idx < len(orders_sequence):
+                        current_order = orders_sequence[order_idx]
+                        # Only assign order_id if this shop matches the order's shop
+                        if current_order["shop_id"] == shop_id:
+                            order_id_value = current_order["order_id"]
+                            order_idx += 1
+                    
+                    stop = models.JobStop(
+                        route_id=route.id,
+                        shop_id=shop_id,
+                        order_id=order_id_value,
+                        sequence=seq
+                    )
 
-            # Update order status to PLANED (don't assign job_id yet)
-            for order_info in orders_sequence:
-                order_obj = db.query(models.Order).filter(
-                    models.Order.order_id == order_info["order_id"]
-                ).first()
-                
-                if order_obj:
-                    order_obj.status = models.OrderStatus.PLANED
-                    # DO NOT SET job_id here - only when job is COMPLETED
-                    print(f"  Updated order {order_obj.order_id} status to PLANED")
+                    # Add timing from calculated times
+                    if arrival_times and seq < len(arrival_times):
+                        minutes = int(arrival_times[seq])
+                        hours = minutes // 60
+                        mins = minutes % 60
+                        stop.arrival_time = time(int(hours % 24), int(mins % 60))
 
-            # Generate and store Folium map
-            print(f"Generating map for route {route.id}...")
-            try:
-                map_manager = MapManager(db)
-                map_html = map_manager.generate_map(solver_nodes)
-                if map_html:
-                    route.folium_html = map_html
-                    print(f"✓ Map generated ({len(map_html)} chars)")
-                else:
-                    print(f"✗ Map generation returned None")
+                    if departure_times and seq < len(departure_times):
+                        minutes = int(departure_times[seq])
+                        hours = minutes // 60
+                        mins = minutes % 60
+                        stop.departure_time = time(int(hours % 24), int(mins % 60))
+
+                    db.add(stop)
+                db.flush()
+                logging.info(f"Added {len(solver_nodes)} stops to database for route {route.id}")
+
+                # Generate and store Folium map
+                try:
+                    map_manager = MapManager(db)
+                    map_html = map_manager.generate_map(solver_nodes)
+                    if map_html:
+                        route.folium_html = map_html
+                        logging.info(f"Generated map for route {route.id}")
+                    else:
+                        logging.debug(f"Map generation returned None")
+                        route.folium_html = None
+                except Exception as e:
+                    logging.error(f"Map generation error: {e}")
                     route.folium_html = None
-            except Exception as e:
-                print(f"✗✗✗ Map generation error: {e}")
-                import traceback
-                traceback.print_exc()
-                route.folium_html = None
-
-        print("\n=== COMMITTING TO DATABASE ===")
-        db.commit()
-        print("✓ Committed successfully")
-        
-        db.refresh(job)
-        print(f"=== JOB {job.id} SAVED SUCCESSFULLY ===\n")
-        return job
+            
+            job.status = models.JobStatus.PLANNED
+            db.commit()   
+            db.refresh(job)
+            logging.info(f"Changed job {job.id} status: 'planned'")
+            return job
+        except Exception as e:
+            logging.error(f"Job saving to database failed: {e}")

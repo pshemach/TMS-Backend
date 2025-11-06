@@ -371,4 +371,4 @@ class VRPSolver:
                 "vehicle_id": vehicles[v].id if v < len(vehicles) else None
             }
         
-        return set(), routes
+        return routes

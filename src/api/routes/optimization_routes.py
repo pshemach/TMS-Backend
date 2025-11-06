@@ -11,11 +11,7 @@ get_db = database.get_db
 
     
 @router.post("/")
-def run_optimization(
-    request: schemas.OptimizeRequest, 
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
-    ):
+def run_optimization(request: schemas.OptimizeRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
 
     if not request.vehicles or len(request.vehicles) == 0:
         raise HTTPException(status_code=400, detail="No vehicles provided in request")
@@ -42,7 +38,7 @@ def run_optimization(
     
     day = request.day if request.day else date.today()
     
-    job =   models.Job(name=f"Delivery {day}", day=day, status=models.JobStatus.RUNNING)  
+    job = models.Job(name=f"Delivery {day}", day=day, status=models.JobStatus.RUNNING)  
     db.add(job)
     db.commit()
     db.refresh(job)

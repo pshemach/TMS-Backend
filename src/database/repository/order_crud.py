@@ -275,6 +275,12 @@ def mark_orders_active(order_ids: List[int], db: Session):
         models.Order.status == OrderStatus.PENDING
     ).update({models.Order.status: OrderStatus.ACTIVE}, synchronize_session=False)
     db.commit()
+    
+def mark_orders_planed(order_ids: List[int], db: Session):
+    db.query(models.Order).filter(
+        models.Order.id.in_(order_ids)
+    ).update({models.Order.status: OrderStatus.PLANED}, synchronize_session=False)
+    db.commit()
 
 def mark_orders_completed(order_ids: List[int], db: Session):
     db.query(models.Order).filter(
