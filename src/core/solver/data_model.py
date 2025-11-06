@@ -83,19 +83,19 @@ class ORDataModel:
         if not use_tw:
             return None
         
-        tw = {self.depot_id: (0, 1440)}  # Depot: 00:00 to 24:00 (1440 minutes)
+        tw = {0: (self.depot_id,( 0, 1440))}
         
+        # Each order gets its own time window (even if same shop)
         for o in orders:
             start = self._to_minutes(getattr(o, "time_window_start", None))
             end = self._to_minutes(getattr(o, "time_window_end", None))
             
             if start is not None and end is not None:
-                tw[o.shop_id] = (start, end)
+                tw[o.id] = (o.shop_id, (start, end))
             else:
-                tw[o.shop_id] = (0, 1440)
+                tw[o.id] = (o.shop_id, (0, 1440))
                 
         return tw
-    
     
     def _build_penalties(self, orders: List[models.Order]):
         
