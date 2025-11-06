@@ -7,6 +7,7 @@ from src.database.repository import order_crud
 from src.core.solver.data_model import ORDataModel
 from src.api import schemas
 from src.core.solver.ortool_solver import VRPSolver
+from src.core.map_manager import MapManager
 from src.utils.map_utils import get_path_coordinates
 import folium
 from folium import plugins
@@ -233,7 +234,8 @@ class Orchestrator:
             # Generate and store Folium map
             print(f"Generating map for route {route.id}...")
             try:
-                map_html = self._generate_route_map(db, solver_nodes)
+                map_manager = MapManager(db)
+                map_html = map_manager.generate_map(solver_nodes)
                 if map_html:
                     route.folium_html = map_html
                     print(f"✓ Map generated ({len(map_html)} chars)")
