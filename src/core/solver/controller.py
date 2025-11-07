@@ -46,34 +46,42 @@ class Orchestrator:
         
     def optimize_orchestrator(self):
         """process uncompleted orders"""
-        
-        orders = self.db.query(models.Order).filter(
-            models.Order.id.in_(self.request.selected_orders),
-            models.Order.status != models.OrderStatus.COMPLETED
-        ).all()
-        remaining_orders = orders.copy()
-        
-        """optimize predefined route assigned vehicles"""
-        predefined_optimized_routes = []
-        for v, route in self.fixed_vehicles:
-            route_shop_ids = []
-            for r in route.shops:
-                route_shop_ids.append(int(r['shop_id']))
-            route_orders = [o for o in orders if o.shop_id in route_shop_ids]
-            if route_orders:
-                optimized = self._optimize_single_vehicle_route(vehicle=v, orders=route_orders)
-                if optimized:
-                    predefined_optimized_routes.append(optimized)
-                    
-            remaining_orders = [o for o in remaining_orders if o not in route_orders]
-        
-        """optimized vehicles not assigned pre routes"""
-        free_optimized_routes=[]
-        if self.free_vehicles and remaining_orders:
-            free_optimized_routes = self._optimize_free_vehicles(orders=remaining_orders, vehicles=self.free_vehicles)
+        try:
+            predefined_optimized_routes = []
+            free_optimized_routes = []
             
-        return predefined_optimized_routes, free_optimized_routes
-    
+            orders = self.db.query(models.Order).filter(
+                models.Order.id.in_(self.request.selected_orders),
+                models.Order.status != models.OrderStatus.COMPLETED
+            ).all()
+            remaining_orders = orders.copy()
+            
+            logging.info(f"Number of uncompleted orders in database and request: {len(remaining_orders)}")
+            
+            if len(remaining_orders)==0:
+                logging.info("No uncompleted orders in request")
+                return predefined_optimized_routes, free_optimized_routes
+            
+            """optimize predefined route assigned vehicles"""
+            for v, route in self.fixed_vehicles:
+                route_shop_ids = []
+                for r in route.shops:
+                    route_shop_ids.append(int(r['shop_id']))
+                route_orders = [o for o in orders if o.shop_id in route_shop_ids]
+                if route_orders:
+                    optimized = self._optimize_single_vehicle_route(vehicle=v, orders=route_orders)
+                    if optimized:
+                        predefined_optimized_routes.append(optimized)
+                        
+                remaining_orders = [o for o in remaining_orders if o not in route_orders]
+            
+            """optimized vehicles not assigned pre routes"""
+            if self.free_vehicles and remaining_orders:
+                free_optimized_routes = self._optimize_free_vehicles(orders=remaining_orders, vehicles=self.free_vehicles)
+                
+            return predefined_optimized_routes, free_optimized_routes
+        except Exception as e:
+            logging.error(f"Orchestration of optimization failed: {e}")
     
     def _split_vehicles(self):
         try:
@@ -115,29 +123,35 @@ class Orchestrator:
                 
     def _optimize_single_vehicle_route(self,orders: List[models.Order], vehicle: models.Vehicles):
         """Optimize vehicle with pre defined routes"""
-        data = ORDataModel(db=self.db, vehicles=[vehicle], orders=orders).get_data()
-        routes = VRPSolver().run_ortools_solver(data, [vehicle])
-        if routes and 0 in routes and routes[0]["nodes"]:
-            return {
-                "vehicle": vehicle,
-                "path": routes[0],
-                "orders": orders
-            }
+        try:
+            data = ORDataModel(db=self.db, vehicles=[vehicle], orders=orders).get_data()
+            logging.info(f"optimization data for pre defined routed extracted")
+            routes = VRPSolver().run_ortools_solver(data, [vehicle])
+            if routes and 0 in routes and routes[0]["nodes"]:
+                return {
+                    "vehicle": vehicle,
+                    "path": routes[0],
+                    "orders": orders
+                }
+        except Exception as e:
+            logging.error(f"Pre defined route orchestration failed: {e}")
             
     def _optimize_free_vehicles(self, orders: List[models.Order], vehicles: List[models.Vehicles]):
         """vrp for no routes assigned"""
-        data = ORDataModel(db=self.db, vehicles=vehicles, orders=orders).get_data()
-        routes = VRPSolver().run_ortools_solver(data=data, vehicles=vehicles)
-        
-        return [
-            {
-                "vehicle": vehicles[i],
-			    "path": routes[i],  # Already contains nodes, arrival_times, total_distance, total_time
-			    "orders": [o for o in orders if o.shop_id in routes[i]["nodes"]]
-       }
-            for i in range(len(routes)) if routes[i]["nodes"]
-            ]
-        
+        try:
+            data = ORDataModel(db=self.db, vehicles=vehicles, orders=orders).get_data()
+            routes = VRPSolver().run_ortools_solver(data=data, vehicles=vehicles)
+            
+            return [
+                {
+                    "vehicle": vehicles[i],
+                    "path": routes[i],  # Already contains nodes, arrival_times, total_distance, total_time
+                    "orders": [o for o in orders if o.shop_id in routes[i]["nodes"]]
+        }
+                for i in range(len(routes)) if routes[i]["nodes"]
+                ]
+        except Exception as e:
+            logging.error(f"Free vehicles orchestration failed: {e}")
         
     def _save_job(self, db: Session, job: models.Job, routes_data: Dict):
         """Save routes into a Job with order tracking and proper timing."""       
