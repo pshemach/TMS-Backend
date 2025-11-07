@@ -19,7 +19,7 @@ class GPSMaster(Base):
     matrix_status = Column(String, default=None)
     
     __table_args__ = (
-        UniqueConstraint('shop_code', 'brand', name='_unique_shop'),
+        UniqueConstraint('shop_code', name='_unique_shop'),
     )
     
 class Depot(Base):

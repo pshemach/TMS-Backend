@@ -1,7 +1,11 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from src.database import models
 from src.api import schemas
+from src.logger import logging
+from src.exception import TMSException
+import sys
 
 
 def get_all(db: Session):
@@ -9,25 +13,24 @@ def get_all(db: Session):
         shops = db.query(models.GPSMaster).all()
         return shops
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_204_NO_CONTENT, detail=f"unable to load shops, error: {e}")
+        logging.error(f"Failed to fetch shops: {e}")
+        raise TMSException(f"Unable to load shops: {e}", sys)
 
 def get_shop(id: int, db: Session):
     try:
-        shop = db.query(models.GPSMaster).filter(models.GPSMaster.id == id)
-        if not shop.first():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"shop with id {id} not found")
-        return shop.first()
+        shop = db.query(models.GPSMaster).filter(models.GPSMaster.id == id).first()
+        return shop
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"unable to load shop {id}, error: {e}")
+        logging.error(f"Failed to fetch shop {id}: {e}")
+        raise TMSException(f"Unable to load shop {id}: {e}", sys)
 
 def get_shop_code(shop_code: str, db: Session):
     try:
-        shop = db.query(models.GPSMaster).filter(models.GPSMaster.shop_code == shop_code)
-        if not shop.first():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"shop with id {id} not found")
-        return shop.first()
+        shop = db.query(models.GPSMaster).filter(models.GPSMaster.shop_code == shop_code).first()
+        return shop
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"unable to load shop {id}, error: {e}")
+        logging.error(f"Failed to fetch shop with code {shop_code}: {e}")
+        raise TMSException(f"Unable to load shop with code {shop_code}: {e}", sys)
     
 def create(request: schemas.ShopRequest, db: Session):
     try:
@@ -44,28 +47,38 @@ def create(request: schemas.ShopRequest, db: Session):
         db.add(new_shop)
         db.commit()
         db.refresh(new_shop)
+        logging.info(f"Created shop with id {new_shop.id}")
         return new_shop
+    except IntegrityError as e:
+        db.rollback()
+        logging.error(f"Integrity error creating shop: {e}")
+        raise TMSException(f"Shop creation failed - duplicate or constraint violation: {e}", sys)
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE, detail=f'shop with {request.dict()} not created: {e}')
-    
+        db.rollback()
+        logging.error(f"Failed to create shop: {e}")
+        raise TMSException(f"Shop creation failed: {e}", sys)
+
 def delete(id: int, db: Session):
     try:
-        shop = db.query(models.GPSMaster).filter(models.GPSMaster.id == id)
+        shop = db.query(models.GPSMaster).filter(models.GPSMaster.id == id).first()
         
-        if not shop.first():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"shop with id {id} not found")
+        if not shop:
+            return None  # Let route handle 404
         
-        shop.delete(synchronize_session=False)
+        db.delete(shop)
         db.commit()
-        return {f"shop with id {id} deleted"}
+        logging.info(f"Deleted shop with id {id}")
+        return {"message": f"Shop with id {id} deleted"}
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"unable to delete shop {id}, error: {e}")
-
+        db.rollback()
+        logging.error(f"Failed to delete shop {id}: {e}")
+        raise TMSException(f"Unable to delete shop {id}: {e}", sys)
+    
 def update(id: int, request: schemas.ShopRequest, db: Session):
     try:
         shop = db.query(models.GPSMaster).filter(models.GPSMaster.id == id)
         if not shop.first():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"shop with id {id} not found")
+            return None  # Let route handle 404
 
         gps_changed = (
         shop.first().latitude != request.latitude or 
@@ -96,10 +109,16 @@ def update(id: int, request: schemas.ShopRequest, db: Session):
                 models.GPSMaster.matrix_status : current_status
             })
         db.commit()
+        logging.info(f"Updated shop with id {id}")
         return shop.first()
+    except IntegrityError as e:
+        db.rollback()
+        logging.error(f"Integrity error updating shop {id}: {e}")
+        raise TMSException(f"Shop update failed - constraint violation: {e}", sys)
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail= f"unable to update shop id {id}, error: {e}")
-    
+        db.rollback()
+        logging.error(f"Failed to update shop {id}: {e}")
+        raise TMSException(f"Unable to update shop {id}: {e}", sys)
     
 def shop_coords(shop: models.GPSMaster) -> dict:
     """Return only the fields the API needs."""

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.api.routes import (fleet_routes, master_routes, vehicle_routes, 
+from src.api.routes import (fleet_routes, shop_routes, vehicle_routes, 
                             vehicle_constrain_routes, geo_constraint_routes, 
                             predefined_route_routes, order_routes, 
                             order_group_routes,optimization_routes, job_routes )
@@ -23,7 +23,7 @@ app.add_middleware(
 
 models.Base.metadata.create_all(bind=engine)
 
-app.include_router(master_routes.master_router)
+app.include_router(shop_routes.router)
 app.include_router(fleet_routes.fleet_router)
 app.include_router(vehicle_routes.vehicle_router)
 app.include_router(vehicle_constrain_routes.vehicle_constraint_router)
