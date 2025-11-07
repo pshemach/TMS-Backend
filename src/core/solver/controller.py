@@ -8,7 +8,6 @@ from src.core.solver.data_model import ORDataModel
 from src.api import schemas
 from src.core.solver.ortool_solver import VRPSolver
 from src.core.map_manager import MapManager
-from src.utils.map_utils import get_path_coordinates
 from src.logger import logging
 from src.exception import TMSException
 import sys
