@@ -1,17 +1,27 @@
-from pydantic import BaseModel, validator, AnyHttpUrl
+from pydantic import BaseModel, validator, Field
 from typing import Optional, List, Dict
 from datetime import date, datetime, time
 
-class ShopRequest(BaseModel):
-    shop_code: str
-    location: str
-    address: str
-    brand: str
-    district: str
-    latitude: float
-    longitude: float
+# ======== Shop schemas ========
+class ShopBase(BaseModel):
+    shop_code: str = Field(description="Unique shop code")
+    location: str = Field(description="User prefer location name")
+    address: str = Field(description="Address of the shop")
+    brand: str = Field(description="Brand of the shop")
+    district: str = Field(description="District belongs to shop")
+    latitude: float = Field(ge=5.5, le=10.5, description="Latitude of the shop location")
+    longitude: float = Field(ge=78.5, le=82.5, description="Longitude of the shop location")
+    
+class ShopRequest(ShopBase):
+    """Schema for updating Shop"""
+    pass
+
+class ShopResponse(ShopBase):
+    id: int
+    matrix_status: str
 
 
+# ======== Fleet schemas ========
 class VehicleConstrainBase(BaseModel):
     days: Optional[int] = None
     payload: Optional[float] = None
@@ -92,7 +102,7 @@ class FleetResponse(FleetBase):
     class Config:
         from_attributes = True
         
-        
+# ======== Geo constrain schemas ========        
 class GeoConstraintBase(BaseModel):
     start_shop_id: int
     end_shop_id:   int
@@ -116,7 +126,7 @@ class GeoConstraintResponse(BaseModel):
         from_attributes = True
         
         
-
+# ======== Predefine route constrain schemas ========
 class ShopInRoute(BaseModel):
     shop_id: int
 
@@ -143,7 +153,7 @@ class PredefinedRouteResponse(BaseModel):
     class Config:
         from_attributes = True
         
-        
+# ======== Order & constrain schemas ========  
 class TimeWindow(BaseModel):
     start: Optional[time] = None
     end: Optional[time] = None
@@ -224,7 +234,7 @@ class OrderGroupResponse(BaseModel):
         from_attributes = True
         
         
-
+# ======== Optimization schemas ========
 class VehicleRouteAssignment(BaseModel):
     vehicle_id: int
     predefined_route_id: Optional[int] = None 
@@ -240,7 +250,7 @@ class OptimizeResponse(BaseModel):
     message: str
     
     
-
+# ======== Job schemas ========
 class JobSummary(BaseModel):
     id: int
     name: str
