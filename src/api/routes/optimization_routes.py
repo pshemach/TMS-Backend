@@ -5,6 +5,7 @@ from src.database import database, models
 from datetime import date
 from src.api import schemas
 from src.core.solver.controller import run_optimization_task
+from src.logger import logging
 
 router = APIRouter(prefix="/optimize", tags=["optimization-test"])
 get_db = database.get_db
@@ -43,6 +44,7 @@ def run_optimization(request: schemas.OptimizeRequest, background_tasks: Backgro
     db.commit()
     db.refresh(job)
     
+    logging.info(f"--- Job ({job.id} - {job.name}) started, {job.status} ---")
     background_tasks.add_task(run_optimization_task, db, request, job.id)
 
     return schemas.OptimizeResponse(

@@ -232,7 +232,7 @@ class Orchestrator:
             job.status = models.JobStatus.PLANNED
             db.commit()   
             db.refresh(job)
-            logging.info(f"Changed job {job.id} status: 'planned'")
-            return job
+            logging.info(f"--- Job ({job.id}, {job.name}) finished, {job.status} ---")
+            return jo
         except Exception as e:
             logging.error(f"Job saving to database failed: {e}")
