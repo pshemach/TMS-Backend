@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from src.database import database
 from src.database import models
-from src.database.repository import geo_constraint_crud as ops
-from src.database.repository.shops_curd import shop_coords
+from src.database.services import geo_constraint_crud as ops
+from src.database.services.shops_curd import shop_coords
 from src.api import schemas
 
 get_db = database.get_db

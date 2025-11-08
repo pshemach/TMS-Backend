@@ -4,9 +4,9 @@ from typing import List, Optional
 from datetime import date
 from src.database import database, models
 from src.api import schemas
-from src.database.repository.shops_curd import shop_coords
-from src.database.repository.order_crud import mark_orders_completed
-from src.database.repository import job_curd
+from src.database.services.shops_curd import shop_coords
+from src.database.services.order_crud import mark_orders_completed
+from src.database.services import job_curd
 
 
 router = APIRouter(prefix="/job", tags=["job"])

@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, Union, List, Dict, Tuple
 from datetime import time
 from src.database import models
-from src.database.repository import order_crud
+from src.database.services import order_crud
 from src.core.solver.data_model import ORDataModel
 from src.api import schemas
 from src.core.solver.ortool_solver import VRPSolver

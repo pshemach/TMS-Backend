@@ -1,6 +1,6 @@
 from fastapi import APIRouter, status, Depends, HTTPException
 from sqlalchemy.orm import Session
-from src.database.repository import fleet_curd, vehicle_crud
+from src.database.services import fleet_curd, vehicle_crud
 from src.api import schemas
 from src.database import database
 from typing import List, Optional

@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from src.database import database
 from src.database import models
-from src.database.repository import order_crud as ops
+from src.database.services import order_crud as ops
 from src.api import schemas
-from src.database.repository.shops_curd import shop_coords
+from src.database.services.shops_curd import shop_coords
 from datetime import date
 
 get_db = database.get_db

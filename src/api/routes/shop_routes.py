@@ -1,7 +1,7 @@
 from fastapi import APIRouter, status,HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List
-from src.database.repository import shops_curd
+from src.database.services import shops_curd
 from .. import schemas
 from src.database import database
 

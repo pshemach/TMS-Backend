@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session, joinedload
 from typing import List
 from src.database import database
 from src.database import models
-from src.database.repository import order_group_crud as ops
+from src.database.services import order_group_crud as ops
 from src.api import schemas
-from src.database.repository.shops_curd import shop_coords
+from src.database.services.shops_curd import shop_coords
 
 get_db = database.get_db
 router = APIRouter(prefix="/order-group", tags=["order-group"])
