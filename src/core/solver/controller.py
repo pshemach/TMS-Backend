@@ -232,6 +232,6 @@ class Orchestrator:
             db.commit()   
             db.refresh(job)
             logging.info(f"--- Job ({job.id}, {job.name}) finished, {job.status} ---")
-            return jo
+            return job
         except Exception as e:
             logging.error(f"Job saving to database failed: {e}")

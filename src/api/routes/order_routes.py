@@ -65,7 +65,7 @@ def delete(id: int, db: Session = Depends(get_db)):
     order = db.query(models.Order).filter(models.Order.id==id).first()
     if order.status == models.OrderStatus.COMPLETED:
         raise HTTPException(status_code=400, detail=f"Order {order.order_id} has already completed")
-    return ops.delete_order_and_jobs(db, id)
+    return ops.delete_order(db=db, order_db_id=id)
 
 @router.get("/", response_model=List[schemas.OrderResponse])
 def list_all(
