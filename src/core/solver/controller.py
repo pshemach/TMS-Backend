@@ -1,5 +1,4 @@
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
 from typing import Optional, Union, List, Dict, Tuple
 from datetime import time
 from src.database import models
