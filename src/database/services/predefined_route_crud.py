@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from src.database import models
 from src.api import schemas
-from src.database.repository.shops_curd import shop_coords
+from src.database.services.shops_curd import shop_coords
 
 
 def create_predefined_route(request: schemas.PredefinedRouteCreate, db: Session) -> models.PredefinedRoute:
