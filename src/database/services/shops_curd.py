@@ -10,7 +10,7 @@ import sys
 
 def get_all(db: Session):
     try:
-        shops = db.query(models.GPSMaster).all()
+        shops = db.query(models.GPSMaster).filter(models.GPSMaster.brand != models.Depot.BRAND).all()
         return shops
     except Exception as e:
         logging.error(f"Failed to fetch shops: {e}")
@@ -18,7 +18,10 @@ def get_all(db: Session):
 
 def get_shop(id: int, db: Session):
     try:
-        shop = db.query(models.GPSMaster).filter(models.GPSMaster.id == id).first()
+        shop = db.query(models.GPSMaster).filter(
+            models.GPSMaster.id == id,
+            models.GPSMaster.brand != models.Depot.BRAND
+            ).first()
         return shop
     except Exception as e:
         logging.error(f"Failed to fetch shop {id}: {e}")
@@ -26,7 +29,10 @@ def get_shop(id: int, db: Session):
 
 def get_shop_code(shop_code: str, db: Session):
     try:
-        shop = db.query(models.GPSMaster).filter(models.GPSMaster.shop_code == shop_code).first()
+        shop = db.query(models.GPSMaster).filter(
+            models.GPSMaster.shop_code == shop_code,
+            models.GPSMaster.brand != models.Depot.BRAND
+            ).first()
         return shop
     except Exception as e:
         logging.error(f"Failed to fetch shop with code {shop_code}: {e}")

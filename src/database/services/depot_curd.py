@@ -10,7 +10,7 @@ import sys
 
 def get_all(db: Session):
     try:
-        depots = db.query(models.GPSMaster).filter(models.GPSMaster.brand == "depot").all()
+        depots = db.query(models.GPSMaster).filter(models.GPSMaster.brand == models.Depot.BRAND).all()
         return depots
     except Exception as e:
         logging.error(f"Failed to fetch depots: {e}")
@@ -20,7 +20,7 @@ def get_depot(id: int, db: Session):
     try:
         depot = db.query(models.GPSMaster).filter(
             models.GPSMaster.id == id,
-            models.GPSMaster.brand == "depot"
+            models.GPSMaster.brand ==  models.Depot.BRAND
         ).first()
         return depot
     except Exception as e:
@@ -33,7 +33,7 @@ def create(request: schemas.DepotRequest, db: Session):
             shop_code=request.depot_code, 
             location=request.location,
             address=request.address, 
-            brand="depot",  # Hardcoded as depot
+            brand= models.Depot.BRAND,  # Hardcoded as depot
             district=request.district, 
             latitude=request.latitude,
             longitude=request.longitude,
@@ -57,7 +57,7 @@ def delete(id: int, db: Session):
     try:
         depot = db.query(models.GPSMaster).filter(
             models.GPSMaster.id == id,
-            models.GPSMaster.brand == "depot"
+            models.GPSMaster.brand ==  models.Depot.BRAND
         ).first()
         
         if not depot:
@@ -76,7 +76,7 @@ def update(id: int, request: schemas.DepotRequest, db: Session):
     try:
         depot = db.query(models.GPSMaster).filter(
             models.GPSMaster.id == id,
-            models.GPSMaster.brand == "depot"
+            models.GPSMaster.brand ==  models.Depot.BRAND
         ).first()
         
         if not depot:
@@ -91,7 +91,7 @@ def update(id: int, request: schemas.DepotRequest, db: Session):
         depot.shop_code = request.depot_code
         depot.location = request.location
         depot.address = request.address
-        depot.brand = "depot"  # Ensure it remains a depot
+        depot.brand =  models.Depot.BRAND # Ensure it remains a depot
         depot.district = request.district
         depot.latitude = request.latitude
         depot.longitude = request.longitude

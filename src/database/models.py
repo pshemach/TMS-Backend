@@ -3,6 +3,11 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
 from .database import Base
+from dataclasses import dataclass
+
+@dataclass
+class Depot:
+    BRAND = 'depot'
 
 class GPSMaster(Base):
     """master shop list data storage table"""
