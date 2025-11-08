@@ -22,20 +22,6 @@ class GPSMaster(Base):
         UniqueConstraint('shop_code', name='_unique_shop'),
     )
     
-class Depot(Base):
-    """master shop list data storage table"""
-    __tablename__ = 'depots'
-    
-    id = Column(Integer, primary_key=True, index=True)
-    depot_code = Column(String, unique=True)
-    location = Column(String)
-    address = Column(String)
-    district = Column(String)
-    latitude = Column(Float, nullable=False)
-    longitude = Column(Float, nullable=False)
-    matrix_status = Column(String, default=None)
-    
-    
 class MatrixMaster(Base):
     """Distance matrix storage table (upper triangle only)"""
     __tablename__ = 'shop_matrix'
@@ -144,7 +130,6 @@ class PredefinedRoute(Base):
         UniqueConstraint('name', name='uix_route_name'),
     )
     
-
 # Enum for status
 class OrderStatus(enum.Enum):
     PENDING = "pending"      # Not yet in optimization
@@ -183,7 +168,6 @@ class Order(Base):
     
     __table_args__ = (UniqueConstraint('order_id', name='uix_order_id'),)
     
-    
 class OrderGroup(Base):
     __tablename__ = "order_groups"
 
@@ -201,7 +185,6 @@ order_group_link = Table(
     Column("order_id", Integer, ForeignKey("orders.id"), primary_key=True),
     Column("group_id", Integer, ForeignKey("order_groups.id"), primary_key=True),
 )
-
 
 class JobStatus(enum.Enum):
     RUNNING = "running"
