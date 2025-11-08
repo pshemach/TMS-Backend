@@ -45,7 +45,7 @@ def get_shop_by_code(shop_code: str, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@router.post('/shop', status_code=status.HTTP_201_CREATED)
+@router.post('/shop', status_code=status.HTTP_201_CREATED, response_model=schemas.ShopResponse)
 def create_shop(request: schemas.ShopRequest, db: Session = Depends(get_db)):
     try:
         new_shop = shops_curd.create(request, db)
