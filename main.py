@@ -7,10 +7,7 @@ from src.api.routes import (fleet_routes, shop_routes,depot_routes,  vehicle_rou
 from src.database import models
 from src.database.database import engine
 
-
-app = FastAPI()
-
-
+app = FastAPI(description=f"{'='*10} TMS BACKEND API {'='*10}")
 
 # Add CORS middleware
 app.add_middleware(
