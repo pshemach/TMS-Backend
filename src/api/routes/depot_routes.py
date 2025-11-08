@@ -7,7 +7,7 @@ from src.database import database, models
 
 get_db = database.get_db
 
-router = APIRouter(prefix='/depot', tags=['depot'])
+router = APIRouter(prefix='/master', tags=['depot'])
 
 def _enrich(depot: models.GPSMaster) -> schemas.DepotResponse:
     return schemas.DepotResponse(
@@ -21,7 +21,7 @@ def _enrich(depot: models.GPSMaster) -> schemas.DepotResponse:
         matrix_status=depot.matrix_status
     )
 
-@router.get('/', status_code=status.HTTP_200_OK, response_model=List[schemas.DepotResponse])
+@router.get('/depot', status_code=status.HTTP_200_OK, response_model=List[schemas.DepotResponse])
 def get_all_depots(db: Session=Depends(get_db)):
     try:
         depots = depot_curd.get_all(db)
@@ -29,7 +29,7 @@ def get_all_depots(db: Session=Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@router.get('/{id}', status_code=status.HTTP_200_OK, response_model=schemas.DepotResponse)
+@router.get('/depot/{id}', status_code=status.HTTP_200_OK, response_model=schemas.DepotResponse)
 def get_depot(id: int, db: Session=Depends(get_db)):
     try:
         depot = depot_curd.get_depot(id, db)
@@ -39,7 +39,7 @@ def get_depot(id: int, db: Session=Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.DepotResponse)
+@router.post('/depot', status_code=status.HTTP_201_CREATED, response_model=schemas.DepotResponse)
 def create_depot(request: schemas.DepotRequest, db: Session=Depends(get_db)):
     try:
         new_depot = depot_curd.create(request, db)
@@ -47,7 +47,7 @@ def create_depot(request: schemas.DepotRequest, db: Session=Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@router.delete('/{id}', status_code=status.HTTP_200_OK)
+@router.delete('/depot/{id}', status_code=status.HTTP_200_OK)
 def delete_depot(id: int, db: Session=Depends(get_db)):
     try:
         msg = depot_curd.delete(id, db)
@@ -57,7 +57,7 @@ def delete_depot(id: int, db: Session=Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@router.put('/{id}', status_code=status.HTTP_202_ACCEPTED, response_model=schemas.DepotResponse)
+@router.put('/depot/{id}', status_code=status.HTTP_202_ACCEPTED, response_model=schemas.DepotResponse)
 def update_depot(id: int, request: schemas.DepotRequest, db: Session=Depends(get_db)):
     try:
         depot = depot_curd.update(id, request, db)
