@@ -261,6 +261,7 @@ class OptimizeRequest(BaseModel):
     day: Optional[date]
     vehicles: List[VehicleRouteAssignment]
     selected_orders: List[int]  # Required: list of order_id strings to optimize
+    depot_id: Optional[int] = None
     use_time_windows: Optional[bool] = False
 
 class OptimizeResponse(BaseModel):
