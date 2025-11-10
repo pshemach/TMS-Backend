@@ -70,10 +70,10 @@ class VehicleConstrainResponse(VehicleConstrainBase):
         from_attributes = True
 
 class VehicleBase(BaseModel):
-    vehicle_name: str
-    type: str
-    status: str = 'available'
-    location: Optional[str] = None
+    vehicle_name: str = Field(default="Truck 01", description="vehicle name")
+    type: str = Field(default="truck", description="Type of the vehicle")
+    status: str = Field(default='available', description="Status of the vehicle, this should be available, unavailable, maintenance")
+    location: Optional[str] = Field(default="Gampaha", description="Current Location of the vehicle")
 
 class VehicleRequest(VehicleBase):
     """Schema for creating or updating a vehicle."""
