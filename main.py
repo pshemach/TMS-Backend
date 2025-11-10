@@ -22,7 +22,7 @@ models.Base.metadata.create_all(bind=engine)
 
 app.include_router(shop_routes.router)
 app.include_router(depot_routes.router)
-app.include_router(fleet_routes.fleet_router)
+app.include_router(fleet_routes.router)
 app.include_router(vehicle_routes.router)
 app.include_router(vehicle_constrain_routes.router)
 app.include_router(geo_constraint_routes.geo_constraint_router)
