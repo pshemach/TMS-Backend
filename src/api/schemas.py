@@ -41,12 +41,12 @@ class DepotResponse(DepotBase):
 
 # ======== Fleet schemas ========
 class VehicleConstrainBase(BaseModel):
-    days: Optional[int] = None
-    payload: Optional[float] = None
-    volume: Optional[float] = None
-    time_window: Optional[str] = None
-    max_distance: Optional[float] = None
-    max_visits: Optional[int] = None
+    days: Optional[int] = Field(default=1, description="Number of days vehicle allowed to moves")
+    payload: Optional[float] = Field(default=10000.0, description="Payload of the vehicle")
+    volume: Optional[float] = Field(default=40.0, description="volume of the vehicle in cubic meters")
+    time_window: Optional[str] = Field(default="00:00-23:59")
+    max_distance: Optional[float] = Field(default=1200.0, description="max distance allowed for single journey")
+    max_visits: Optional[int] = Field(default=15, description="max orders allowed for single journey")
 
     @validator("payload", "volume")
     def must_be_positive(cls, v):
@@ -95,15 +95,20 @@ class VehicleResponse(VehicleBase):
         from_attributes = True
 
 class FleetBase(BaseModel):
-    fleet_name: Optional[str] = None
-    type: Optional[str] = None
-    region: Optional[str] = None
-    manager: Optional[str] = None
-    status: Optional[str] = None
+    fleet_name: Optional[str] = Field(default="Standard Fleet", description="Fleet name")
+    type: Optional[str] = Field(default="trucks", description="Type of the fleet")
+    region: Optional[str] = Field(default="Island Wide", description="Specific region for fleet")
+    manager: Optional[str] = Field(default="Name")
+    status: Optional[str] = Field(default="active", description="fleet status")
 
 class FleetRequest(FleetBase):
     """Schema for creating or updating a fleet, with optional fields for partial updates."""
-    pass
+    @validator("status")
+    def validate_status(cls, f):
+        valid_statuses = ["active", "inactive"]
+        if f not in valid_statuses:
+            raise ValueError(f"Status must be one of {valid_statuses}")
+        return f
 
 class FleetResponse(FleetBase):
     """Schema for returning fleet data, including vehicles."""
