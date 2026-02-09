@@ -5,13 +5,9 @@ from src.database.services import shops_curd
 from .. import schemas
 from src.database import database
 
-
 get_db = database.get_db
 
-router = APIRouter(
-    prefix='/master',
-    tags=['master']
-)
+router = APIRouter(prefix='/master', tags=['master'])
 
 @router.get('/shop', status_code=status.HTTP_200_OK, response_model=List[schemas.ShopResponse])
 def get_all_shop(db: Session = Depends(get_db)):

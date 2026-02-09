@@ -9,6 +9,7 @@ get_db = database.get_db
 
 router = APIRouter(prefix='/master', tags=['depot'])
 
+# === Helper: Enrich Depot ===
 def _enrich(depot: models.GPSMaster) -> schemas.DepotResponse:
     return schemas.DepotResponse(
         id=depot.id,
@@ -21,6 +22,7 @@ def _enrich(depot: models.GPSMaster) -> schemas.DepotResponse:
         matrix_status=depot.matrix_status
     )
 
+# === List all depots ===
 @router.get('/depot', status_code=status.HTTP_200_OK, response_model=List[schemas.DepotResponse])
 def get_all_depots(db: Session=Depends(get_db)):
     try:
@@ -29,6 +31,7 @@ def get_all_depots(db: Session=Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
+# === Ger depots by id ===
 @router.get('/depot/{id}', status_code=status.HTTP_200_OK, response_model=schemas.DepotResponse)
 def get_depot(id: int, db: Session=Depends(get_db)):
     try:
@@ -39,6 +42,7 @@ def get_depot(id: int, db: Session=Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
+# === Create depot ===
 @router.post('/depot', status_code=status.HTTP_201_CREATED, response_model=schemas.DepotResponse)
 def create_depot(request: schemas.DepotRequest, db: Session=Depends(get_db)):
     try:
@@ -47,6 +51,7 @@ def create_depot(request: schemas.DepotRequest, db: Session=Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
+# === Delete depot ===
 @router.delete('/depot/{id}', status_code=status.HTTP_200_OK)
 def delete_depot(id: int, db: Session=Depends(get_db)):
     try:
@@ -57,6 +62,7 @@ def delete_depot(id: int, db: Session=Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
+# === Update current depot ===
 @router.put('/depot/{id}', status_code=status.HTTP_202_ACCEPTED, response_model=schemas.DepotResponse)
 def update_depot(id: int, request: schemas.DepotRequest, db: Session=Depends(get_db)):
     try:

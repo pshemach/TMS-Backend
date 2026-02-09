@@ -240,6 +240,5 @@ def _summarize_route(route: models.JobRoute) -> schemas.RouteSummary:
     return schemas.RouteSummary(
         id=route.id,
         vehicle_id=route.vehicle_id,
-        vehicle_code=route.vehicle.vehicle_code,
         stop_count=len([s for s in route.stops if s.shop_id != 1])
     )
