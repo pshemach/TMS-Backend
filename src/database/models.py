@@ -4,6 +4,7 @@ from datetime import datetime
 import enum
 from .database import Base
 from dataclasses import dataclass
+from sqlalchemy.dialects.mysql import LONGTEXT
 
 @dataclass
 class Depot:
@@ -218,7 +219,7 @@ class JobRoute(Base):
     total_distance = Column(Float, nullable=True)
     total_time = Column(Float, nullable=True)
     
-    folium_html = Column(Text, nullable=True)
+    folium_html = Column(LONGTEXT, nullable=True)
 
     job = relationship("Job", back_populates="routes")
     vehicle = relationship("Vehicles")

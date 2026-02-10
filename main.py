@@ -6,6 +6,7 @@ from src.api.routes import (fleet_routes, shop_routes,depot_routes,  vehicle_rou
                             order_group_routes,optimization_routes, job_routes )
 from src.database import models
 from src.database.database import engine
+import uvicorn
 
 app = FastAPI(description=f"{'='*10} TMS BACKEND API {'='*10}")
 
@@ -31,3 +32,8 @@ app.include_router(order_routes.router)
 app.include_router(order_group_routes.router)
 app.include_router(optimization_routes.router)
 app.include_router(job_routes.router)
+
+if __name__ == '__main__':
+    uvicorn.run(
+        app, host='0.0.0.0', port=8000
+    )
