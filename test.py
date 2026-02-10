@@ -60,8 +60,38 @@ def usage():
     finally:
         db.close()
         
+def get_matrix_statistics():
+    """
+    Get and display current matrix statistics.
+    Useful for monitoring the matrix state.
+    """
+    db = None
+    try:
+        db = SessionLocal()
+        manager = DistanceMatrixManager(db)
+        
+        stats = manager.get_matrix_statistics()
+        
+        # logger.info("=" * 60)
+        # logger.info("Current Matrix Statistics:")
+        # for key, value in stats.items():
+        #     logger.info(f"  {key}: {value}")
+        # logger.info("=" * 60)
+        
+        return stats
+        
+    except Exception as e:
+        # logger.error(f"Error getting statistics: {str(e)}", exc_info=True)
+        return None
+        
+    finally:
+        if db:
+            db.close()
+        
 if __name__ == "__main__":
     usage()
+    # stats = get_matrix_statistics()
+    # print(stats)
 
 
 # """
