@@ -68,7 +68,7 @@ class Orchestrator:
                     route_shop_ids.append(int(r['shop_id']))
                 route_orders = [o for o in orders if o.shop_id in route_shop_ids]
                 if route_orders:
-                    optimized = self._optimize_single_vehicle_route(vehicle=v, orders=route_orders)
+                    optimized = self._optimize_single_vehicle_route(vehicle=v, orders=route_orders, depot_id=self.request.depot_id)
                     if optimized:
                         predefined_optimized_routes.append(optimized)
                         
@@ -76,7 +76,7 @@ class Orchestrator:
             
             """optimized vehicles not assigned pre routes"""
             if self.free_vehicles and remaining_orders:
-                free_optimized_routes = self._optimize_free_vehicles(orders=remaining_orders, vehicles=self.free_vehicles)
+                free_optimized_routes = self._optimize_free_vehicles(orders=remaining_orders, vehicles=self.free_vehicles, depot_id=self.request.depot_id)
                 
             return predefined_optimized_routes, free_optimized_routes
         except Exception as e:
@@ -120,10 +120,10 @@ class Orchestrator:
             logging.error(f"Vehicle splitting failed: {e}")
             raise TMSException(e, sys)
                 
-    def _optimize_single_vehicle_route(self,orders: List[models.Order], vehicle: models.Vehicles):
+    def _optimize_single_vehicle_route(self,orders: List[models.Order], vehicle: models.Vehicles, depot_id:int=1):
         """Optimize vehicle with pre defined routes"""
         try:
-            data = ORDataModel(db=self.db, vehicles=[vehicle], orders=orders).get_data()
+            data = ORDataModel(db=self.db, vehicles=[vehicle], orders=orders, depot_id=depot_id).get_data()
             logging.info(f"optimization data for pre defined routed extracted")
             routes = VRPSolver().run_ortools_solver(data, [vehicle])
             if routes and 0 in routes and routes[0]["nodes"]:
@@ -135,10 +135,10 @@ class Orchestrator:
         except Exception as e:
             logging.error(f"Pre defined route orchestration failed: {e}")
             
-    def _optimize_free_vehicles(self, orders: List[models.Order], vehicles: List[models.Vehicles]):
+    def _optimize_free_vehicles(self, orders: List[models.Order], vehicles: List[models.Vehicles], depot_id:int=1):
         """vrp for no routes assigned"""
         try:
-            data = ORDataModel(db=self.db, vehicles=vehicles, orders=orders).get_data()
+            data = ORDataModel(db=self.db, vehicles=vehicles, orders=orders, depot_id=depot_id).get_data()
             routes = VRPSolver().run_ortools_solver(data=data, vehicles=vehicles)
             
             return [

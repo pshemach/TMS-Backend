@@ -19,7 +19,7 @@ def run_optimization(request: schemas.OptimizeRequest, background_tasks: Backgro
     
     if not request.selected_orders or len(request.selected_orders) == 0:
         raise HTTPException(status_code=400, detail="No orders provided in request")
-    
+  
     orders = db.query(models.Order).filter(
 		models.Order.id.in_(request.selected_orders),
 		models.Order.status != models.OrderStatus.COMPLETED
