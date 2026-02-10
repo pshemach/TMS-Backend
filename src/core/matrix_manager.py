@@ -231,7 +231,10 @@ class DistanceMatrixManager:
                 print(f"  ✓ Added: {scode1} ↔ {scode2} = {distance_data['distance_km']:.2f} km")
                 
         except Exception as e:
-            self.db.rollback()
+            try:
+                self.db.rollback()
+            except:
+                pass
             print(f"Error: {e}")
 
     def get_distance(self, shop_id_1: int, shop_id_2: int) -> Tuple[float, float]:
