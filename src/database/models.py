@@ -14,14 +14,14 @@ class GPSMaster(Base):
     __tablename__ = 'master_gps'
     
     id = Column(Integer, primary_key=True, index=True)
-    shop_code = Column(String)
-    location = Column(String)
-    address = Column(String)
-    brand = Column(String)
-    district = Column(String)
+    shop_code = Column(String(50))
+    location = Column(String(100))
+    address = Column(String(255))
+    brand = Column(String(50))
+    district = Column(String(100))
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
-    matrix_status = Column(String, default=None)
+    matrix_status = Column(String(50), default=None)
     
     __table_args__ = (
         UniqueConstraint('shop_code', name='_unique_shop'),
@@ -34,8 +34,8 @@ class MatrixMaster(Base):
     id = Column(Integer, primary_key=True, index=True)
     shop_id_1 = Column(Integer)
     shop_id_2 = Column(Integer)
-    shop_code_1 = Column(String)
-    shop_code_2 = Column(String)
+    shop_code_1 = Column(String(50))
+    shop_code_2 = Column(String(50))
     distance_km = Column(Float)
     time_minutes = Column(Float)
     coords = Column(JSON, nullable=True)
@@ -46,11 +46,11 @@ class Fleets(Base):
     __tablename__ = "fleets"
     
     id = Column(Integer, primary_key=True, index=True)
-    fleet_name = Column(String, nullable=False)
-    type = Column(String, nullable=False)
-    region = Column(String, nullable=False)
-    manager = Column(String, nullable=False)
-    status = Column(String, nullable=False)
+    fleet_name = Column(String(100), nullable=False)
+    type = Column(String(50), nullable=False)
+    region = Column(String(100), nullable=False)
+    manager = Column(String(100), nullable=False)
+    status = Column(String(50), nullable=False)
     total_vehicles = Column(Integer, default=0, nullable=False)
     available_vehicles = Column(Integer, default=0, nullable=False)
     
@@ -66,11 +66,11 @@ class Vehicles(Base):
     __tablename__ = "vehicles"
     
     id = Column(Integer, primary_key=True, index=True)
-    vehicle_name = Column(String, nullable=False)
+    vehicle_name = Column(String(100), nullable=False)
     fleet_id = Column(Integer, ForeignKey("fleets.id"), nullable=False, index=True)
-    type = Column(String, nullable=False)
-    status = Column(String, nullable=False)
-    location = Column(String)
+    type = Column(String(50), nullable=False)
+    status = Column(String(50), nullable=False)
+    location = Column(String(100))
     
     # Define relationships
     fleet = relationship("Fleets", back_populates="vehicles")
@@ -92,13 +92,13 @@ class VehicleConstrain(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=False, unique=True)
-    vehicle_name = Column(String, nullable=False)
-    fleet = Column(String, nullable=False)
-    type = Column(String, nullable=False)
+    vehicle_name = Column(String(100), nullable=False)
+    fleet = Column(String(100), nullable=False)
+    type = Column(String(50), nullable=False)
     days = Column(Integer, default=1)
     payload = Column(Float, default=10000.0)  # kg
     volume = Column(Float, default=40.0)  # cubic meters
-    time_window = Column(String, default="00:00-23:59")
+    time_window = Column(String(20), default="00:00-23:59")
     max_distance = Column(Float, default=1200.0)  # km
     max_visits = Column(Integer, default=15)
     
@@ -126,7 +126,7 @@ class PredefinedRoute(Base):
     __tablename__ = "predefined_routes"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False, unique=True)
+    name = Column(String(100), nullable=False, unique=True)
     
     # Store shops as JSON: [{"shop_id": 1}, {"shop_id": 5}, ...]
     shops = Column(JSON, nullable=False, default=list)
@@ -151,7 +151,7 @@ class Order(Base):
     __tablename__ = "orders"
 
     id = Column(Integer, primary_key=True, index=True)
-    order_id = Column(String, unique=True, nullable=False, index=True)
+    order_id = Column(String(100), unique=True, nullable=False, index=True)
     shop_id = Column(Integer, ForeignKey("master_gps.id"), nullable=False)
     po_value = Column(Float, nullable=True)
     volume = Column(Float, nullable=True)
@@ -177,7 +177,7 @@ class OrderGroup(Base):
     __tablename__ = "order_groups"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False, unique=True)  # e.g., "Colombo Morning Batch"
+    name = Column(String(100), nullable=False, unique=True)  # e.g., "Colombo Morning Batch"
     created_at = Column(DateTime, default=datetime.utcnow)
 
     orders = relationship("Order", back_populates="group", secondary="order_group_link")
@@ -201,7 +201,7 @@ class Job(Base):
     __tablename__ = "jobs"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
+    name = Column(String(100), nullable=False)
     day = Column(Date, nullable=False)
     status = Column(Enum(JobStatus), default=JobStatus.PLANNED, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -232,7 +232,7 @@ class JobStop(Base):
     route_id = Column(Integer, ForeignKey("job_routes.id", ondelete="CASCADE"), nullable=False)
     shop_id = Column(Integer, ForeignKey("master_gps.id"), nullable=False)
     sequence = Column(Integer, nullable=False)
-    order_id = Column(String, nullable=True)  # Already correct - matches Order.order_id type
+    order_id = Column(String(100), nullable=True)  # Already correct - matches Order.order_id type
     arrival_time = Column(Time, nullable=True)
     departure_time = Column(Time, nullable=True)
 

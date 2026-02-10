@@ -32,8 +32,8 @@ class Settings:
         # Database configurations
         self.database_folder_name = os.getenv('DATABASE_FOLDER', 'database')
         self.database_folder_path = self.outputs_folder_path / self.database_folder_name
-        self.database_url = f"sqlite:///{self.database_folder_path}/{self.client_name}.db"
-        # self.database_url = "mysql+pymysql://root:root@127.0.0.1:3306/delivery_db"
+        # self.database_url = f"sqlite:///{self.database_folder_path}/{self.client_name}.db"
+        self.database_url = "mysql+pymysql://root:root@127.0.0.1:3306/delivery_db"
         
         # Create folders 
         self.data_folder_path.mkdir(parents=True, exist_ok=True)
