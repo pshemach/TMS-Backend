@@ -90,8 +90,8 @@ def get_matrix_statistics():
         
 if __name__ == "__main__":
     usage()
-    # stats = get_matrix_statistics()
-    # print(stats)
+    stats = get_matrix_statistics()
+    print(stats)
 
 
 # """
