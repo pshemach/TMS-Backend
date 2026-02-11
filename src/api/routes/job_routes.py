@@ -58,9 +58,9 @@ def get_vehicle_visits(
     job_id: Optional[int] = None,
     db: Session = Depends(get_db)
 ):
-    q = db.query(models.JobStop).join(models.JobRoute).filter(
+    q = db.query(models.JobStop).join(models.JobRoute).join(models.GPSMaster).filter(
         models.JobRoute.vehicle_id == vehicle_id,
-        models.JobStop.shop_id != 1  # exclude depot
+        models.GPSMaster.brand != 'depot'  # exclude depot
     )
     if job_id:
         q = q.filter(models.JobRoute.job_id == job_id)
@@ -196,7 +196,7 @@ def _summarize_job(job: models.Job) -> schemas.JobSummary:
 
 # === Helper: Enrich Route ===
 def _enrich_route(route: models.JobRoute) -> schemas.VehicleRoute:
-    stops = [_enrich_stop(s) for s in route.stops if s.shop_id != 1]
+    stops = [_enrich_stop(s) for s in route.stops if s.shop.brand != 'depot']
     return schemas.VehicleRoute(
         id=route.id,
         job_id=route.job_id,
@@ -240,5 +240,5 @@ def _summarize_route(route: models.JobRoute) -> schemas.RouteSummary:
     return schemas.RouteSummary(
         id=route.id,
         vehicle_id=route.vehicle_id,
-        stop_count=len([s for s in route.stops if s.shop_id != 1])
+        stop_count=len([s for s in route.stops if s.shop.brand != 'depot'])
     )
