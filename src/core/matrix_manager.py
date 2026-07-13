@@ -6,7 +6,7 @@ from src.database.models import GPSMaster, MatrixMaster
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 import json
-
+import math
 import logging
 import os
 from from_root import from_root
@@ -39,7 +39,7 @@ class DistanceMatrixManager:
         """
         Calculate distance and time between two GPS coordinates using OSRM.
         Returns (distance_km, duration_minutes).
-        """
+        """        
         coords, distance, duration = get_osrm_data((lat1,lon1), (lat2,lon2))
         
         return distance, duration, coords
@@ -121,8 +121,13 @@ class DistanceMatrixManager:
                         distances_added += len(pending_distances)
                 
                 # Update status to 'updated'
-                pending_shop.matrix_status = 'updated'
-                total_calculations += distances_added
+                matrix_codes = self.db.query(MatrixMaster).filter(
+                    MatrixMaster.shop_id_1 == shop_id or MatrixMaster.shop_id_2 == shop_id
+                ).all()
+                print(f"Matrix codes: {matrix_codes}")
+                if len(matrix_codes) > 0:
+                    pending_shop.matrix_status = 'updated'
+                    total_calculations += distances_added
                 
                 logging.info(f"Total added for this shop: {total_calculations} distance calculations")
             
@@ -266,7 +271,7 @@ class DistanceMatrixManager:
                 existing.time_minutes = distance_data['time_minutes']
                 existing.coords = json.dumps(coords) if coords else None
                 existing.last_calculated = datetime.utcnow()
-                # self.db.commit()
+                self.db.commit()
                 logging.info(f"Updated: {scode1} - {scode2} = {distance_data['distance_km']:.2f} km")
             else:
                 # Create new record
@@ -281,7 +286,7 @@ class DistanceMatrixManager:
                     last_calculated=datetime.utcnow()
                 )
                 self.db.add(new_distance)
-                # self.db.commit()
+                self.db.commit()
                 # db.refresh(new_distance)
                 logging.info(f"Added: {scode1} - {scode2} = {distance_data['distance_km']:.2f} km")
                 
