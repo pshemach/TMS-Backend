@@ -75,24 +75,36 @@ Before running the project, make sure you have:
 
 ## Installation
 
-1. Clone the repository:
+1. Create a virtual environment:
 
 ```bash
-git clone <repository-url>
-cd TMS-Backend
+uv venv
 ```
 
-2. Create a virtual environment:
+2. Activate the virtual environment:
 
-```bash
-python -m venv .venv
-.\.venv\Scripts\activate
+On Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+On Windows Command Prompt:
+
+```cmd
+.venv\Scripts\activate.bat
 ```
 
 3. Install dependencies:
 
 ```bash
-pip install -r requirements.txt
+uv pip install -r requirements.txt
+```
+
+If your project uses a `pyproject.toml` file and `uv` lockfile, you can also use:
+
+```bash
+uv sync
 ```
 
 ## Environment Variables
