@@ -1,6 +1,6 @@
 # TMS Backend API
 
-This repository contains the backend service for the Transportation Management System (TMS). It is built with FastAPI and exposes a set of REST APIs to manage fleets, vehicles, shops, depots, orders, optimization workflows, and related constraints.
+This repository contains the backend service for the Transportation Management System (TMS). It is built with FastAPI and exposes a set of REST APIs to manage fleets, vehicles, shops, depots, orders, optimization workflows, and related constraints. This project uses Google OR-Tools for route optimization based on distance or time minimization.
 
 ## Overview
 
