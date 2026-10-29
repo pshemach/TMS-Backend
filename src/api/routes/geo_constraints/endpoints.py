@@ -4,7 +4,7 @@ from typing import List, Optional
 from src.infrastructure.database import models
 from src.api.deps import get_db
 from src.api.routes.geo_constraints import repository as ops
-from src.api.routes.shops.repository import shop_coords
+from src.api.routes.customers.repository import shop_coords
 from src.api.routes.geo_constraints import schemas
 
 router = APIRouter(tags=["geo-constraint"])

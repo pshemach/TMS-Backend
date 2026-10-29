@@ -5,7 +5,7 @@ from src.infrastructure.database import models
 from src.api.deps import get_db
 from src.api.routes.predefined_routes import repository as ops
 from src.api.routes.predefined_routes import schemas
-from src.api.routes.shops.repository import shop_coords
+from src.api.routes.customers.repository import shop_coords
 
 router = APIRouter(tags=["predefined-route"])
 

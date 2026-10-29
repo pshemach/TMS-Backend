@@ -16,7 +16,7 @@ from src.api.routes.optimization.endpoints import router as optimization_router
 from src.api.routes.order_groups.endpoints import router as order_groups_router
 from src.api.routes.orders.endpoints import router as orders_router
 from src.api.routes.predefined_routes.endpoints import router as predefined_routes_router
-from src.api.routes.shops.endpoints import router as shops_router
+from src.api.routes.customers.endpoints import router as customers_router
 from src.api.routes.vehicle_constraints.endpoints import router as vehicle_constraints_router
 from src.api.routes.vehicles.endpoints import router as vehicles_router
 from src.infrastructure import config
@@ -40,7 +40,7 @@ app.add_middleware(
 models.Base.metadata.create_all(bind=engine)
 
 # --- API ---
-app.include_router(shops_router)
+app.include_router(customers_router)
 app.include_router(depots_router)
 app.include_router(fleets_router)
 app.include_router(vehicles_router)

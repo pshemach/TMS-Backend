@@ -5,7 +5,7 @@ from src.infrastructure.database import models
 from src.api.deps import get_db
 from src.api.routes.order_groups import repository as ops
 from src.api.routes.order_groups import schemas
-from src.api.routes.shops.repository import shop_coords
+from src.api.routes.customers.repository import shop_coords
 
 router = APIRouter(tags=["order-group"])
 

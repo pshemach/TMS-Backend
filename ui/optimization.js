@@ -100,7 +100,7 @@
       const [vehiclesRes, routesRes, depotsRes] = await Promise.all([
         fetch(TMS_API.url("/vehicle")),
         fetch(TMS_API.url("/predefined-route")),
-        fetch(TMS_API.url("/master/depot")),
+        fetch(TMS_API.url("/location/depot")),
       ]);
 
       console.log("Vehicle response status:", vehiclesRes.status);

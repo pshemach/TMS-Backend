@@ -185,7 +185,7 @@
                       data-bs-toggle="modal"
                       data-bs-target="#shopModal"
                     >
-                      <i class="bi bi-plus-lg"></i> Add Shop
+                      <i class="bi bi-plus-lg"></i> Add Customer
                     </button>
                   </div>
                 </div>
@@ -198,7 +198,7 @@
             <div class="col-12">
               <div class="card shadow-sm">
                 <div class="card-header">
-                  <h5 class="mb-0"><i class="bi bi-shop"></i> Shops</h5>
+                  <h5 class="mb-0"><i class="bi bi-shop"></i> Customers</h5>
                 </div>
                 <div class="card-body p-0">
                   <div class="table-container shop-table-container">
@@ -230,7 +230,7 @@
             </div>
           </div>
 
-          <!-- ==================== DEPOTS SECTION (within Shop Management) ==================== -->
+          <!-- ==================== DEPOTS SECTION (within Location Management) ==================== -->
           <!-- Depot Filters -->
           <div class="row mt-5 mb-4">
             <div class="col-12">
@@ -534,7 +534,7 @@
                             />
                           </th>
                           <th>Order ID</th>
-                          <th>Shop Code</th>
+                          <th>Customer Code</th>
                           <th>Location</th>
                           <th>Address</th>
                           <th>PO Value</th>
@@ -709,7 +709,7 @@
                                 />
                               </th>
                               <th>Order ID</th>
-                              <th>Shop Code</th>
+                              <th>Customer Code</th>
                               <th>Location</th>
                               <th>Address</th>
                               <th>PO Value</th>
@@ -903,7 +903,7 @@
                       <thead class="table-light">
                         <tr>
                           <th>Order ID</th>
-                          <th>Shop</th>
+                          <th>Customer</th>
                           <th>Location</th>
                           <th>Brand</th>
                           <th>PO Value</th>
@@ -1107,7 +1107,7 @@
                       <thead class="table-light">
                         <tr>
                           <th width="60">Seq</th>
-                          <th>Shop Code</th>
+                          <th>Customer Code</th>
                           <th>Order ID</th>
                           <th>Location</th>
                           <th>Address</th>
@@ -1149,13 +1149,13 @@
 
     <!-- ==================== MODALS ==================== -->
 
-    <!-- Shop Modal -->
+    <!-- Customer Modal -->
     <div class="modal fade" id="shopModal" tabindex="-1">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <form id="shopForm">
             <div class="modal-header">
-              <h5 class="modal-title" id="modalTitle">Add Shop</h5>
+              <h5 class="modal-title" id="modalTitle">Add Customer</h5>
               <button
                 type="button"
                 class="btn-close"
@@ -1167,7 +1167,7 @@
               <div class="row g-3">
                 <div class="col-md-6">
                   <label class="form-label"
-                    >Shop Code <span class="text-danger">*</span></label
+                    >Customer Code <span class="text-danger">*</span></label
                   >
                   <input
                     type="text"
@@ -1243,7 +1243,7 @@
               >
                 Cancel
               </button>
-              <button type="submit" class="btn btn-primary">Save Shop</button>
+              <button type="submit" class="btn btn-primary">Save Customer</button>
             </div>
           </form>
         </div>
@@ -1543,7 +1543,7 @@
                 </div>
                 <div class="col-md-6">
                   <label class="form-label"
-                    >Shop Code <span class="text-danger">*</span></label
+                    >Customer Code <span class="text-danger">*</span></label
                   >
                   <div class="position-relative">
                     <input
@@ -1855,7 +1855,7 @@
 
               <div class="mb-3">
                 <label class="form-label"
-                  >Start Shop <span class="text-danger">*</span></label
+                  >Start Customer <span class="text-danger">*</span></label
                 >
                 <input
                   type="text"
@@ -1872,7 +1872,7 @@
 
               <div class="mb-3">
                 <label class="form-label"
-                  >End Shop <span class="text-danger">*</span></label
+                  >End Customer <span class="text-danger">*</span></label
                 >
                 <input
                   type="text"
@@ -1947,7 +1947,7 @@
               </div>
 
               <div class="mb-3">
-                <label class="form-label">Add Shop</label>
+                <label class="form-label">Add Customer</label>
                 <div class="input-group">
                   <input
                     type="text"
@@ -1973,7 +1973,7 @@
                 class="border rounded p-3 bg-light"
                 style="min-height: 120px"
               >
-                <h6>Selected Shops (drag to reorder)</h6>
+                <h6>Selected Customers (drag to reorder)</h6>
                 <ol
                   id="routeShopListContainer"
                   class="list-group list-group-numbered"
@@ -2028,7 +2028,7 @@
 
     <script src="/runtime-config.js"></script>
     <script src="/static/api_config.js"></script>
-    <script src="/static/shop_crud.js"></script>
+    <script src="/static/customer_crud.js"></script>
     <script src="/static/depot_crud.js"></script>
     <script src="/static/fleet_crud.js"></script>
     <script src="/static/order_crud.js"></script>

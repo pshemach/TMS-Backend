@@ -5,7 +5,7 @@ from datetime import date
 from src.infrastructure.database import models
 from src.api.deps import get_db
 from src.api.routes.jobs import schemas
-from src.api.routes.shops.repository import shop_coords
+from src.api.routes.customers.repository import shop_coords
 from src.api.routes.orders.repository import mark_orders_completed
 from src.api.routes.jobs import repository as job_curd
 

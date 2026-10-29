@@ -5,7 +5,7 @@ let selectedRouteShops = []; // [{shop_id, shop_code, location, address, latitud
 async function loadRouteShops() {
   // Always load fresh data to ensure it's up-to-date
   try {
-    const res = await fetch(TMS_API.url("/master/shop"));
+    const res = await fetch(TMS_API.url("/location/customer"));
     if (!res.ok) throw new Error("Failed to load shops");
     routeShops = await res.json();
     console.log("Loaded shops for routes:", routeShops.length);
@@ -285,7 +285,7 @@ async function fetchPredefinedRoutes() {
             route.shops.map(async (shopEntry) => {
               try {
                 const shopRes = await fetch(
-                  TMS_API.url(`/master/shop/shop_code/${shopEntry.shop.shop_code}`)
+                  TMS_API.url(`/location/customer/code/${shopEntry.shop.shop_code}`)
                 );
                 if (shopRes.ok) {
                   const fullShopData = await shopRes.json();

@@ -71,8 +71,8 @@ Interactive docs:
 
 | Area | Prefix | Notes |
 |---|---|---|
-| Shops | `/master/shop` | Shop master records |
-| Depots | `/master/depot` | Depot master records |
+| Customers | `/location/customer` | Customer location records |
+| Depots | `/location/depot` | Depot location records |
 | Fleets | `/fleet` | |
 | Vehicles | `/vehicle` | Create under `POST /vehicle/{fleet_id}` |
 | Vehicle constraints | `/vehicle-constraint` | `PUT /vehicle-constraint/{vehicle_id}` |

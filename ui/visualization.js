@@ -964,7 +964,7 @@
               <thead>
                 <tr>
                   <th style="width: 80px;">Sequence</th>
-                  <th>Shop Code</th>
+                  <th>Customer Code</th>
                   <th>Order ID</th>
                   <th>Location</th>
                   <th>Address</th>

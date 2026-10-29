@@ -1,5 +1,5 @@
-// shop_crud.js
-const API_BASE = TMS_API.url("/master");
+// customer_crud.js
+const API_BASE = TMS_API.url("/location");
 let allShops = [];
 
 // Sri Lankan Districts
@@ -59,8 +59,8 @@ function showToast(message, type = "success") {
 // Fetch all shops
 async function loadShops() {
   try {
-    console.log("Fetching shops from:", `${API_BASE}/shop`);
-    const res = await fetch(`${API_BASE}/shop`, {
+    console.log("Fetching shops from:", `${API_BASE}/customer`);
+    const res = await fetch(`${API_BASE}/customer`, {
       method: "GET",
       headers: {
         Accept: "application/json",
@@ -80,7 +80,7 @@ async function loadShops() {
     renderTable(allShops);
   } catch (err) {
     console.error("Error loading shops:", err);
-    showToast(`Failed to load shops: ${err.message}`, "danger");
+    showToast(`Failed to load customers: ${err.message}`, "danger");
   }
 }
 
@@ -169,7 +169,7 @@ function applyFilters() {
   renderTable(filtered);
 }
 
-// Add/Edit Shop
+// Add/Edit Customer
 shopForm.onsubmit = async (e) => {
   e.preventDefault();
   const id = document.getElementById("shopId").value;
@@ -185,7 +185,7 @@ shopForm.onsubmit = async (e) => {
 
   try {
     const method = id ? "PUT" : "POST";
-    const url = id ? `${API_BASE}/shop/${id}` : `${API_BASE}/shop`;
+    const url = id ? `${API_BASE}/customer/${id}` : `${API_BASE}/customer`;
     const res = await fetch(url, {
       method,
       headers: {
@@ -201,7 +201,7 @@ shopForm.onsubmit = async (e) => {
     }
 
     const result = await res.json();
-    showToast(id ? "Shop updated!" : "Shop added!");
+    showToast(id ? "Customer updated!" : "Customer added!");
     bootstrap.Modal.getInstance(document.getElementById("shopModal")).hide();
     loadShops();
   } catch (err) {
@@ -212,7 +212,7 @@ shopForm.onsubmit = async (e) => {
 // Edit
 window.editShop = async (id) => {
   try {
-    const res = await fetch(`${API_BASE}/shop/${id}`, {
+    const res = await fetch(`${API_BASE}/customer/${id}`, {
       method: "GET",
       headers: {
         Accept: "application/json",
@@ -222,10 +222,10 @@ window.editShop = async (id) => {
       mode: "cors",
       credentials: "same-origin",
     });
-    if (!res.ok) throw new Error("Shop not found");
+    if (!res.ok) throw new Error("Customer not found");
     const shop = await res.json();
 
-    document.getElementById("modalTitle").textContent = "Edit Shop";
+    document.getElementById("modalTitle").textContent = "Edit Customer";
     document.getElementById("shopId").value = shop.id;
     document.getElementById("shopCode").value = shop.shop_code;
     document.getElementById("location").value = shop.location;
@@ -243,10 +243,10 @@ window.editShop = async (id) => {
 
 // Delete
 window.deleteShop = async (id) => {
-  if (!confirm("Delete this shop?")) return;
+  if (!confirm("Delete this customer?")) return;
 
   try {
-    const res = await fetch(`${API_BASE}/shop/${id}`, {
+    const res = await fetch(`${API_BASE}/customer/${id}`, {
       method: "DELETE",
       headers: {
         Accept: "application/json",
@@ -257,7 +257,7 @@ window.deleteShop = async (id) => {
       credentials: "same-origin",
     });
     if (!res.ok) throw new Error("Failed to delete");
-    showToast("Shop deleted!");
+    showToast("Customer deleted!");
     loadShops();
   } catch (err) {
     showToast(err.message, "danger");
@@ -278,7 +278,7 @@ function populateDistrictDropdown() {
 document.getElementById("shopModal").addEventListener("hidden.bs.modal", () => {
   shopForm.reset();
   document.getElementById("shopId").value = "";
-  document.getElementById("modalTitle").textContent = "Add Shop";
+  document.getElementById("modalTitle").textContent = "Add Customer";
 });
 
 // Initialize district dropdown when modal opens

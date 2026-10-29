@@ -1,5 +1,5 @@
 // depot_crud.js
-// Relies on global API_BASE and showToast defined in shop_crud.js
+// Relies on global API_BASE and showToast defined in customer_crud.js
 let allDepots = [];
 
 // DOM Elements

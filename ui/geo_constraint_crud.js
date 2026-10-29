@@ -9,7 +9,7 @@ let selectedVehicle = null;
 async function loadGeoConstraintData() {
   try {
     const [shopsRes, vehiclesRes] = await Promise.all([
-      fetch(TMS_API.url("/master/shop")),
+      fetch(TMS_API.url("/location/customer")),
       fetch(TMS_API.url("/vehicle")),
     ]);
 
@@ -256,10 +256,10 @@ async function fetchGeoConstraints() {
           // Fetch full shop details for start and end shops
           const [startShopRes, endShopRes] = await Promise.all([
             fetch(
-              TMS_API.url(`/master/shop/shop_code/${constraint.start_shop.shop_code}`)
+              TMS_API.url(`/location/customer/code/${constraint.start_shop.shop_code}`)
             ),
             fetch(
-              TMS_API.url(`/master/shop/shop_code/${constraint.end_shop.shop_code}`)
+              TMS_API.url(`/location/customer/code/${constraint.end_shop.shop_code}`)
             ),
           ]);
 
