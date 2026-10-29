@@ -8,6 +8,7 @@ from src.api.routes.depots.endpoints import router as depots_router
 from src.api.routes.fleets.endpoints import router as fleets_router
 from src.api.routes.geo_constraints.endpoints import router as geo_constraints_router
 from src.api.routes.jobs.endpoints import router as jobs_router
+from src.api.routes.matrix.endpoints import router as matrix_router
 from src.api.routes.optimization.endpoints import router as optimization_router
 from src.api.routes.order_groups.endpoints import router as order_groups_router
 from src.api.routes.orders.endpoints import router as orders_router
@@ -45,6 +46,7 @@ app.include_router(orders_router)
 app.include_router(order_groups_router)
 app.include_router(optimization_router)
 app.include_router(jobs_router)
+app.include_router(matrix_router)
 
 # Serve UI last so API routes keep priority. `/` opens index.html.
 app.mount("/", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
