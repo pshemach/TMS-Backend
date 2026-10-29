@@ -9,28 +9,43 @@ from src.api.routes.customers import repository, schemas
 router = APIRouter(prefix="/location", tags=["location"])
 
 
+def _to_response(row) -> schemas.CustomerResponse:
+    return schemas.CustomerResponse(
+        id=row.id,
+        location_code=row.location_code,
+        location_name=row.location_name,
+        address=row.address,
+        brand=row.brand or "",
+        district=row.district or "",
+        latitude=row.latitude,
+        longitude=row.longitude,
+        location_type=row.location_type.value if hasattr(row.location_type, "value") else str(row.location_type),
+        matrix_status=row.matrix_status.value if hasattr(row.matrix_status, "value") else str(row.matrix_status),
+    )
+
+
 @router.get("/customer", status_code=status.HTTP_200_OK, response_model=List[schemas.CustomerResponse])
 def list_customers(db: Session = Depends(get_db)):
     try:
-        return repository.get_all(db)
+        return [_to_response(r) for r in repository.get_all(db)]
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 @router.get(
-    "/customer/code/{shop_code}",
+    "/customer/code/{location_code}",
     status_code=status.HTTP_200_OK,
     response_model=schemas.CustomerResponse,
 )
-def get_customer_by_code(shop_code: str, db: Session = Depends(get_db)):
+def get_customer_by_code(location_code: str, db: Session = Depends(get_db)):
     try:
-        customer = repository.get_shop_code(shop_code, db)
+        customer = repository.get_by_code(location_code, db)
         if not customer:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Customer with code {shop_code} not found",
+                detail=f"Customer with code {location_code} not found",
             )
-        return customer
+        return _to_response(customer)
     except HTTPException:
         raise
     except Exception as e:
@@ -40,13 +55,13 @@ def get_customer_by_code(shop_code: str, db: Session = Depends(get_db)):
 @router.get("/customer/{id}", status_code=status.HTTP_200_OK, response_model=schemas.CustomerResponse)
 def get_customer(id: int, db: Session = Depends(get_db)):
     try:
-        customer = repository.get_shop(id, db)
+        customer = repository.get_by_id(id, db)
         if not customer:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Customer with id {id} not found",
             )
-        return customer
+        return _to_response(customer)
     except HTTPException:
         raise
     except Exception as e:
@@ -56,7 +71,7 @@ def get_customer(id: int, db: Session = Depends(get_db)):
 @router.post("/customer", status_code=status.HTTP_201_CREATED, response_model=schemas.CustomerResponse)
 def create_customer(request: schemas.CustomerRequest, db: Session = Depends(get_db)):
     try:
-        return repository.create(request, db)
+        return _to_response(repository.create(request, db))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
@@ -77,6 +92,7 @@ def delete_customer(id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
+
 @router.put("/customer/{id}", status_code=status.HTTP_202_ACCEPTED, response_model=schemas.CustomerResponse)
 def update_customer(id: int, request: schemas.CustomerRequest, db: Session = Depends(get_db)):
     try:
@@ -86,7 +102,7 @@ def update_customer(id: int, request: schemas.CustomerRequest, db: Session = Dep
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Customer with id {id} not found",
             )
-        return customer
+        return _to_response(customer)
     except HTTPException:
         raise
     except Exception as e:

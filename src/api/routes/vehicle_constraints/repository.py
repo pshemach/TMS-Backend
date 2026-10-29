@@ -9,13 +9,13 @@ import sys
 def update_vehicle_constraint(vehicle_id: int, request: schemas.VehicleConstrainRequest, db: Session):
     """Update the constraints for a specific vehicle."""
     try:
-        constraint = db.query(models.VehicleConstrain).filter(models.VehicleConstrain.vehicle_id == vehicle_id).first()
+        constraint = db.query(models.VehicleConstraint).filter(models.VehicleConstraint.vehicle_id == vehicle_id).first()
         
         if not constraint:
             logging.debug(f"No constrain found for vehicle id {vehicle_id}")
             return None
         
-        vehicle = db.query(models.Vehicles).filter(models.Vehicles.id == vehicle_id).first()
+        vehicle = db.query(models.Vehicle).filter(models.Vehicle.id == vehicle_id).first()
         if not vehicle:
             logging.debug(f"No vehicle found for vehicle id {vehicle_id}")
             raise HTTPException(
@@ -23,7 +23,7 @@ def update_vehicle_constraint(vehicle_id: int, request: schemas.VehicleConstrain
                 detail=f"Vehicle with id {vehicle_id} not found"
             )
             
-        fleet = db.query(models.Fleets).filter(models.Fleets.id == vehicle.fleet_id).first()
+        fleet = db.query(models.Fleet).filter(models.Fleet.id == vehicle.fleet_id).first()
         if not fleet:
             logging.debug(f"No fleet found for vehicle id {vehicle_id}")
             raise HTTPException(

@@ -1,6 +1,6 @@
 """Request builders and arrange-helpers for API tests.
 
-Coordinates stay inside the Sri Lanka bounds enforced by the shop and depot
+Coordinates stay inside the Sri Lanka bounds enforced by customer/depot
 schemas (latitude 5.5–10.5, longitude 78.5–82.5).
 """
 
@@ -19,28 +19,38 @@ def _next(prefix: str) -> str:
 
 
 def shop_payload(**overrides) -> dict:
+    """Customer create payload (alias kept for test readability)."""
     payload = {
-        "shop_code": _next("SH"),
-        "location": "Colombo 03",
+        "location_code": _next("SH"),
+        "location_name": "Colombo 03",
         "address": "12 Galle Road",
         "brand": "keells",
         "district": "Colombo",
         "latitude": 6.9271,
         "longitude": 79.8612,
     }
+    # Accept legacy kwarg names from older tests
+    if "shop_code" in overrides:
+        overrides["location_code"] = overrides.pop("shop_code")
+    if "location" in overrides and "location_name" not in overrides:
+        overrides["location_name"] = overrides.pop("location")
     payload.update(overrides)
     return payload
 
 
 def depot_payload(**overrides) -> dict:
     payload = {
-        "depot_code": _next("DP"),
-        "location": "Orugodawatta",
+        "location_code": _next("DP"),
+        "location_name": "Orugodawatta",
         "address": "Baseline Road",
         "district": "Colombo",
         "latitude": 6.9480,
         "longitude": 79.8780,
     }
+    if "depot_code" in overrides:
+        overrides["location_code"] = overrides.pop("depot_code")
+    if "location" in overrides and "location_name" not in overrides:
+        overrides["location_name"] = overrides.pop("location")
     payload.update(overrides)
     return payload
 
@@ -68,16 +78,22 @@ def vehicle_payload(**overrides) -> dict:
     return payload
 
 
-def order_payload(shop_id: int, **overrides) -> dict:
+def order_payload(location_id: int | None = None, **overrides) -> dict:
+    if "shop_id" in overrides and location_id is None:
+        location_id = overrides.pop("shop_id")
+    if location_id is None:
+        raise TypeError("order_payload requires location_id (or shop_id)")
     payload = {
         "order_id": _next("PO-"),
-        "shop_id": shop_id,
+        "location_id": location_id,
         "po_value": 150000.0,
         "volume": 2.5,
         "po_date": "2026-10-29",
         "time_window": {"start": "09:00:00", "end": "17:00:00"},
         "priority": "high",
     }
+    if "shop_id" in overrides:
+        overrides["location_id"] = overrides.pop("shop_id")
     payload.update(overrides)
     return payload
 
@@ -119,18 +135,15 @@ def create_vehicle(client, fleet_id: int, **overrides) -> dict:
     return response.json()
 
 
-def create_order(client, shop_id: int, **overrides) -> dict:
-    response = client.post("/order/", json=order_payload(shop_id, **overrides))
+def create_order(client, location_id: int = None, shop_id: int = None, **overrides) -> dict:
+    lid = location_id if location_id is not None else shop_id
+    response = client.post("/order", json=order_payload(lid, **overrides))
     assert response.status_code == 201, response.text
     return response.json()
 
 
 def seed_job(db_session, *, vehicle_id: int, day: date | None = None, status=None, stops: list[dict]):
-    """Insert a job, one route, and stops directly.
-
-    The public API creates jobs only through optimization. Lifecycle tests
-    arrange the route graph here, then exercise ``/job`` over HTTP.
-    """
+    """Insert a job, one route, and stops directly."""
     job = models.Job(
         name="Manual delivery",
         day=day or date(2026, 10, 29),
@@ -150,10 +163,11 @@ def seed_job(db_session, *, vehicle_id: int, day: date | None = None, status=Non
     db_session.flush()
 
     for index, stop in enumerate(stops, start=1):
+        location_id = stop.get("location_id", stop.get("shop_id"))
         db_session.add(
             models.JobStop(
                 route_id=route.id,
-                shop_id=stop["shop_id"],
+                location_id=location_id,
                 sequence=index,
                 order_id=stop.get("order_id"),
             )

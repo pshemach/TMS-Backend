@@ -1,67 +1,78 @@
-from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
-from src.infrastructure.database import models
-from src.api.routes.customers import schemas
-from src.infrastructure.logging import logging
-from src.infrastructure.exceptions import TMSException
 import sys
+
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from src.api.routes.customers import schemas
+from src.infrastructure.database import models
+from src.infrastructure.exceptions import TMSException
+from src.infrastructure.logging import logging
+
+
+def _active_customers(db: Session):
+    return db.query(models.Location).filter(
+        models.Location.is_deleted.is_(False),
+        models.Location.location_type == models.LocationType.CUSTOMER,
+    )
 
 
 def get_all(db: Session):
     try:
-        customers = db.query(models.GPSMaster).filter(models.GPSMaster.brand != models.Depot.BRAND).all()
-        return customers
+        return _active_customers(db).all()
     except Exception as e:
         logging.error(f"Failed to fetch customers: {e}")
         raise TMSException(f"Unable to load customers: {e}", sys)
 
 
-def get_shop(id: int, db: Session):
+def get_by_id(id: int, db: Session):
     try:
-        customer = db.query(models.GPSMaster).filter(
-            models.GPSMaster.id == id,
-            models.GPSMaster.brand != models.Depot.BRAND
-        ).first()
-        return customer
+        return _active_customers(db).filter(models.Location.id == id).first()
     except Exception as e:
         logging.error(f"Failed to fetch customer {id}: {e}")
         raise TMSException(f"Unable to load customer {id}: {e}", sys)
 
 
-def get_shop_code(shop_code: str, db: Session):
+def get_by_code(location_code: str, db: Session):
     try:
-        customer = db.query(models.GPSMaster).filter(
-            models.GPSMaster.shop_code == shop_code,
-            models.GPSMaster.brand != models.Depot.BRAND
-        ).first()
-        return customer
+        return (
+            _active_customers(db)
+            .filter(models.Location.location_code == location_code)
+            .first()
+        )
     except Exception as e:
-        logging.error(f"Failed to fetch customer with code {shop_code}: {e}")
-        raise TMSException(f"Unable to load customer with code {shop_code}: {e}", sys)
+        logging.error(f"Failed to fetch customer with code {location_code}: {e}")
+        raise TMSException(f"Unable to load customer with code {location_code}: {e}", sys)
+
+
+# Back-compat aliases used by older callers
+get_shop = get_by_id
+get_shop_code = get_by_code
 
 
 def create(request: schemas.CustomerRequest, db: Session):
     try:
-        new_customer = models.GPSMaster(
-            shop_code=request.shop_code,
-            location=request.location,
+        row = models.Location(
+            location_code=request.location_code,
+            location_name=request.location_name,
             address=request.address,
             brand=request.brand,
             district=request.district,
             latitude=request.latitude,
             longitude=request.longitude,
-            matrix_status='to_create'
+            location_type=models.LocationType.CUSTOMER,
+            matrix_status=models.MatrixStatus.TO_CREATE,
         )
-        db.add(new_customer)
+        db.add(row)
         db.commit()
-        db.refresh(new_customer)
-        logging.info(f"Created customer with id {new_customer.id}")
-        return new_customer
+        db.refresh(row)
+        logging.info(f"Created customer with id {row.id}")
+        return row
     except IntegrityError as e:
         db.rollback()
         logging.error(f"Integrity error creating customer: {e}")
-        raise TMSException(f"Customer creation failed - duplicate or constraint violation: {e}", sys)
+        raise TMSException(
+            f"Customer creation failed - duplicate or constraint violation: {e}", sys
+        )
     except Exception as e:
         db.rollback()
         logging.error(f"Failed to create customer: {e}")
@@ -70,16 +81,36 @@ def create(request: schemas.CustomerRequest, db: Session):
 
 def delete(id: int, db: Session):
     try:
-        customer = db.query(models.GPSMaster).filter(models.GPSMaster.id == id).first()
-
+        customer = _active_customers(db).filter(models.Location.id == id).first()
         if not customer:
             return None
 
-        db.delete(customer)
+        linked_orders = (
+            db.query(models.Order)
+            .filter(
+                models.Order.location_id == id,
+                models.Order.is_deleted.is_(False),
+            )
+            .count()
+        )
+        if linked_orders:
+            from fastapi import HTTPException, status
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Customer {id} is referenced by {linked_orders} order(s)",
+            )
+
+        customer.location_code = f"{customer.location_code}__deleted_{customer.id}"
+        customer.soft_delete()
         db.commit()
-        logging.info(f"Deleted customer with id {id}")
+        logging.info(f"Soft-deleted customer with id {id}")
         return {"message": f"Customer with id {id} deleted"}
     except Exception as e:
+        from fastapi import HTTPException
+
+        if isinstance(e, HTTPException):
+            raise
         db.rollback()
         logging.error(f"Failed to delete customer {id}: {e}")
         raise TMSException(f"Unable to delete customer {id}: {e}", sys)
@@ -87,41 +118,28 @@ def delete(id: int, db: Session):
 
 def update(id: int, request: schemas.CustomerRequest, db: Session):
     try:
-        customer = db.query(models.GPSMaster).filter(models.GPSMaster.id == id)
-        if not customer.first():
+        customer = _active_customers(db).filter(models.Location.id == id).first()
+        if not customer:
             return None
 
         gps_changed = (
-            customer.first().latitude != request.latitude or
-            customer.first().longitude != request.longitude
+            customer.latitude != request.latitude
+            or customer.longitude != request.longitude
         )
-        current_status = customer.first().matrix_status
-
+        customer.location_code = request.location_code
+        customer.location_name = request.location_name
+        customer.address = request.address
+        customer.brand = request.brand
+        customer.district = request.district
+        customer.latitude = request.latitude
+        customer.longitude = request.longitude
         if gps_changed:
-            customer.update({
-                models.GPSMaster.shop_code: request.shop_code,
-                models.GPSMaster.location: request.location,
-                models.GPSMaster.address: request.address,
-                models.GPSMaster.brand: request.brand,
-                models.GPSMaster.district: request.district,
-                models.GPSMaster.latitude: request.latitude,
-                models.GPSMaster.longitude: request.longitude,
-                models.GPSMaster.matrix_status: 'to_update'
-            })
-        else:
-            customer.update({
-                models.GPSMaster.shop_code: request.shop_code,
-                models.GPSMaster.location: request.location,
-                models.GPSMaster.address: request.address,
-                models.GPSMaster.brand: request.brand,
-                models.GPSMaster.district: request.district,
-                models.GPSMaster.latitude: request.latitude,
-                models.GPSMaster.longitude: request.longitude,
-                models.GPSMaster.matrix_status: current_status
-            })
+            customer.matrix_status = models.MatrixStatus.TO_UPDATE
+
         db.commit()
+        db.refresh(customer)
         logging.info(f"Updated customer with id {id}")
-        return customer.first()
+        return customer
     except IntegrityError as e:
         db.rollback()
         logging.error(f"Integrity error updating customer {id}: {e}")
@@ -132,10 +150,13 @@ def update(id: int, request: schemas.CustomerRequest, db: Session):
         raise TMSException(f"Unable to update customer {id}: {e}", sys)
 
 
-def shop_coords(shop: models.GPSMaster) -> dict:
-    """Return only the fields the API needs."""
+def location_coords(loc: models.Location) -> dict:
     return {
-        "shop_code": shop.shop_code,
-        "latitude": shop.latitude,
-        "longitude": shop.longitude,
+        "location_code": loc.location_code,
+        "latitude": loc.latitude,
+        "longitude": loc.longitude,
     }
+
+
+# Back-compat
+shop_coords = location_coords

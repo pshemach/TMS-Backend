@@ -10,8 +10,8 @@ from src.infrastructure.logging import logging
 
 router = APIRouter(prefix="/matrix", tags=["matrix"])
 
+
 def _run_matrix_sync_task(max_workers: int = 10) -> None:
-    """Background worker — opens its own DB session."""
     db = SessionLocal()
     try:
         logging.info(f"Matrix sync started (workers={max_workers})")
@@ -22,28 +22,34 @@ def _run_matrix_sync_task(max_workers: int = 10) -> None:
     finally:
         db.close()
 
+
 @router.get("/stats", response_model=schemas.MatrixStatsResponse)
 def matrix_stats(db: Session = Depends(get_db)):
-    """Return current distance-matrix coverage statistics."""
     return repository.get_stats(db)
 
-@router.get("/pending", response_model=schemas.PendingShopsResponse)
+
+@router.get("/pending", response_model=schemas.PendingLocationsResponse)
 def matrix_pending(db: Session = Depends(get_db)):
-    """List shops waiting for matrix create/update."""
-    shops = repository.get_pending_shops(db)
-    return schemas.PendingShopsResponse(
-        count=len(shops),
-        shops=[
-            schemas.PendingShopItem(
+    locations = repository.get_pending_locations(db)
+    return schemas.PendingLocationsResponse(
+        count=len(locations),
+        locations=[
+            schemas.PendingLocationItem(
                 id=s.id,
-                shop_code=s.shop_code,
-                location=s.location,
+                location_code=s.location_code,
+                location_name=s.location_name,
                 brand=s.brand,
-                matrix_status=s.matrix_status,
+                location_type=s.location_type.value
+                if hasattr(s.location_type, "value")
+                else str(s.location_type),
+                matrix_status=s.matrix_status.value
+                if hasattr(s.matrix_status, "value")
+                else str(s.matrix_status),
             )
-            for s in shops
+            for s in locations
         ],
     )
+
 
 @router.post(
     "/sync",
@@ -55,17 +61,11 @@ def sync_matrix(
     request: schemas.MatrixSyncRequest = schemas.MatrixSyncRequest(),
     db: Session = Depends(get_db),
 ):
-    """
-    Sync pending shops into the distance/duration matrix (background).
-
-    Processes GPS rows with matrix_status `to_create` or `to_update`
-    via OSRM, then marks them `updated`.
-    """
-    pending = repository.get_pending_shops(db)
+    pending = repository.get_pending_locations(db)
     if not pending:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No pending shops to sync (matrix_status to_create/to_update)",
+            detail="No pending locations to sync (matrix_status to_create/to_update)",
         )
 
     background_tasks.add_task(_run_matrix_sync_task, request.max_workers or 10)

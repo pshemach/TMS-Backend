@@ -1,4 +1,4 @@
-"""CLI: process pending distance-matrix updates."""
+"""CLI: process pending distance-matrix updates for locations."""
 
 from src.infrastructure.database.session import SessionLocal
 from src.matrix.manager import DistanceMatrixManager
@@ -17,13 +17,13 @@ def usage():
             print(f"{key}: {value}")
 
         print("\n=== Getting Distance Matrix ===")
-        shop_ids = [1, 2, 3, 4, 5, 6]
+        location_ids = [1, 2, 3, 4, 5, 6]
 
-        distance_dict = manager.get_matrix_for_shops(shop_ids)
+        distance_dict = manager.get_matrix_for_shops(location_ids)
         print(f"Distance dict size: {len(distance_dict)}")
 
-        distance_matrix = manager.get_distance_matrix_as_array(shop_ids)
-        time_matrix = manager.get_time_matrix_as_array(shop_ids)
+        distance_matrix = manager.get_distance_matrix_as_array(location_ids)
+        time_matrix = manager.get_time_matrix_as_array(location_ids)
 
         print("\nDistance Matrix (km):")
         for row in distance_matrix:
@@ -34,10 +34,10 @@ def usage():
             print([f"{x:.2f}" for x in row])
 
         dist, time = manager.get_distance(1, 5)
-        print(f"\nDistance from shop 1 to shop 5: {dist:.2f} km, {time:.2f} min")
+        print(f"\nDistance from location 1 to location 5: {dist:.2f} km, {time:.2f} min")
 
         dist, time = manager.get_distance(5, 1)
-        print(f"Distance from shop 5 to shop 1: {dist:.2f} km, {time:.2f} min")
+        print(f"Distance from location 5 to location 1: {dist:.2f} km, {time:.2f} min")
     except Exception as e:
         print(e)
     finally:

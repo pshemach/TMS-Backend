@@ -22,13 +22,13 @@ def test_shop_list_is_empty_array_when_nothing_is_stored(client):
 def test_shop_lifecycle_persists_coordinates_and_matrix_flag(client):
     created = create_shop(client, shop_code="KEE-COL-01", location="Bambalapitiya")
 
-    assert created["shop_code"] == "KEE-COL-01"
+    assert created["location_code"] == "KEE-COL-01"
     assert created["matrix_status"] == "to_create"
     assert created["latitude"] == 6.9271
 
     fetched = client.get(f"/location/customer/{created['id']}")
     assert fetched.status_code == 200
-    assert fetched.json()["location"] == "Bambalapitiya"
+    assert fetched.json()["location_name"] == "Bambalapitiya"
 
     by_code = client.get("/location/customer/code/KEE-COL-01")
     assert by_code.status_code == 200
@@ -42,7 +42,7 @@ def test_shop_lifecycle_persists_coordinates_and_matrix_flag(client):
     )
     updated = client.put(f"/location/customer/{created['id']}", json=renamed)
     assert updated.status_code == 202
-    assert updated.json()["location"] == "Bambalapitiya renamed"
+    assert updated.json()["location_name"] == "Bambalapitiya renamed"
     assert updated.json()["matrix_status"] == "to_create"
 
     moved = shop_payload(
@@ -73,7 +73,7 @@ def test_coordinate_bounds_are_enforced(client):
 
 def test_missing_shop_fields_are_rejected(client):
     payload = shop_payload()
-    del payload["shop_code"]
+    del payload["location_code"]
     response = client.post("/location/customer", json=payload)
     assert response.status_code == 422
 
@@ -92,7 +92,7 @@ def test_duplicate_shop_code_is_not_stored_twice(client):
     duplicate = client.post("/location/customer", json=payload)
     assert duplicate.status_code >= 400
     listed = client.get("/location/customer")
-    assert [shop["shop_code"] for shop in listed.json()].count("UNIQUE-SHOP") == 1
+    assert [shop["location_code"] for shop in listed.json()].count("UNIQUE-SHOP") == 1
 
 
 def test_depots_are_hidden_from_the_shop_catalogue(client):
@@ -109,7 +109,7 @@ def test_depots_are_hidden_from_the_shop_catalogue(client):
 
 def test_depot_create_forces_depot_brand_and_matrix_flag(client):
     created = create_depot(client, depot_code="DEP-01")
-    assert created["depot_code"] == "DEP-01"
+    assert created["location_code"] == "DEP-01"
     assert created["matrix_status"] == "to_create"
     assert "brand" not in created
 
@@ -127,7 +127,7 @@ def test_depot_create_forces_depot_brand_and_matrix_flag(client):
     relocated = client.put(f"/location/depot/{created['id']}", json=moved)
     assert relocated.status_code == 202
     assert relocated.json()["matrix_status"] == "to_update"
-    assert relocated.json()["depot_code"] == "DEP-01"
+    assert relocated.json()["location_code"] == "DEP-01"
 
 
 @pytest.mark.xfail(
@@ -158,7 +158,7 @@ def test_duplicate_depot_code_is_not_stored_twice(client):
     assert client.post("/location/depot", json=payload).status_code == 201
     duplicate = client.post("/location/depot", json=payload)
     assert duplicate.status_code >= 400
-    codes = [row["depot_code"] for row in client.get("/location/depot").json()]
+    codes = [row["location_code"] for row in client.get("/location/depot").json()]
     assert codes.count("DEP-DUP") == 1
 
 

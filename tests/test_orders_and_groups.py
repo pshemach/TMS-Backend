@@ -10,13 +10,13 @@ def test_order_is_pending_medium_when_priority_is_omitted(client):
     payload = order_payload(shop["id"], order_id="PO-100")
     del payload["priority"]
 
-    created = client.post("/order/", json=payload)
+    created = client.post("/order", json=payload)
     assert created.status_code == 201
     body = created.json()
     assert body["status"] == "pending"
     assert body["priority"] == "medium"
-    assert body["shop"] == {
-        "shop_code": shop["shop_code"],
+    assert body["location"] == {
+        "location_code": shop["location_code"],
         "latitude": shop["latitude"],
         "longitude": shop["longitude"],
     }
@@ -29,12 +29,12 @@ def test_order_is_pending_medium_when_priority_is_omitted(client):
 
 
 def test_order_requires_a_real_shop_and_a_unique_po(client):
-    missing_shop = client.post("/order/", json=order_payload(shop_id=99999, order_id="PO-X"))
+    missing_shop = client.post("/order", json=order_payload(shop_id=99999, order_id="PO-X"))
     assert missing_shop.status_code == 404
 
     shop = create_shop(client)
     create_order(client, shop["id"], order_id="PO-DUP")
-    duplicate = client.post("/order/", json=order_payload(shop["id"], order_id="PO-DUP"))
+    duplicate = client.post("/order", json=order_payload(shop["id"], order_id="PO-DUP"))
     assert duplicate.status_code == 400
     assert "already exists" in duplicate.json()["detail"]
 
@@ -55,7 +55,7 @@ def test_order_create_rejects_a_missing_po_date(client):
     shop = create_shop(client)
     payload = order_payload(shop["id"])
     del payload["po_date"]
-    response = client.post("/order/", json=payload)
+    response = client.post("/order", json=payload)
     assert response.status_code == 422
 
 
@@ -95,9 +95,9 @@ def test_unknown_order_lookups_return_404(client):
 def test_update_rejects_an_unknown_replacement_shop(client):
     shop = create_shop(client)
     order = create_order(client, shop["id"])
-    response = client.put(f"/order/{order['id']}", json={"shop_id": 99999})
+    response = client.put(f"/order/{order['id']}", json={"location_id": 99999})
     assert response.status_code == 404
-    assert client.get(f"/order/{order['id']}").json()["shop_id"] == shop["id"]
+    assert client.get(f"/order/{order['id']}").json()["location_id"] == shop["id"]
 
 
 def test_business_key_update_blocks_illegal_status_transitions(client):
@@ -143,7 +143,7 @@ def test_delete_unknown_order_is_rejected(client):
 
 def test_invalid_priority_is_not_stored(client):
     shop = create_shop(client)
-    response = client.post("/order/", json=order_payload(shop["id"], priority="urgent"))
+    response = client.post("/order", json=order_payload(shop["id"], priority="urgent"))
     assert response.status_code >= 400
     assert client.get("/order/").json() == []
 

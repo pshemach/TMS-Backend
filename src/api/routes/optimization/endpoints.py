@@ -30,8 +30,8 @@ def run_optimization(request: schemas.OptimizeRequest, background_tasks: Backgro
     
     selected_vehicle_ids = [v.vehicle_id for v in request.vehicles]
     
-    vehicles = db.query(models.Vehicles).filter(
-		models.Vehicles.id.in_(selected_vehicle_ids)
+    vehicles = db.query(models.Vehicle).filter(
+		models.Vehicle.id.in_(selected_vehicle_ids)
 	).all()
     
     if len(vehicles) != len(selected_vehicle_ids):

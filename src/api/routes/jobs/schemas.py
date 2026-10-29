@@ -21,21 +21,22 @@ class RouteSummary(BaseModel):
 
 class JobStopDetail(BaseModel):
     sequence: int
-    shop_id: int
-    shop_code: str
-    shop_coords: dict
+    location_id: int
+    location_code: str
+    location_coords: dict
     arrival_time: Optional[time] = None
     departure_time: Optional[time] = None
     order_id: Optional[str]
-    shop_location: Optional[str]
-    shop_address: Optional[str]
+    location_name: Optional[str]
+    location_address: Optional[str]
+    location_type: Optional[str] = None
 
 
 class VehicleVisit(BaseModel):
     sequence: int
-    shop_id: int
-    shop_code: str
-    shop_coords: dict
+    location_id: int
+    location_code: str
+    location_coords: dict
 
 
 class VehicleRoute(BaseModel):

@@ -1,29 +1,42 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from src.infrastructure.database import models
+
 from src.api.routes.predefined_routes import schemas
-from src.api.routes.customers.repository import shop_coords
+from src.infrastructure.database import models
 
 
-def create_predefined_route(request: schemas.PredefinedRouteCreate, db: Session) -> models.PredefinedRoute:
-    # Validate name
-    if db.query(models.PredefinedRoute).filter(models.PredefinedRoute.name == request.name).first():
-        raise HTTPException(status_code=400, detail=f"Route name '{request.name}' already exists")
+def create_predefined_route(
+    request: schemas.PredefinedRouteCreate, db: Session
+) -> models.PredefinedRoute:
+    if (
+        db.query(models.PredefinedRoute)
+        .filter(
+            models.PredefinedRoute.name == request.name,
+            models.PredefinedRoute.is_deleted.is_(False),
+        )
+        .first()
+    ):
+        raise HTTPException(
+            status_code=400, detail=f"Route name '{request.name}' already exists"
+        )
 
-    # Validate all shops exist
-    shop_ids = [s.shop_id for s in request.shops]
-    existing_shops = db.query(models.GPSMaster.id).filter(models.GPSMaster.id.in_(shop_ids)).all()
-    existing_ids = {s[0] for s in existing_shops}
-    missing = set(shop_ids) - existing_ids
+    location_ids = [s.location_id for s in request.locations]
+    existing = (
+        db.query(models.Location.id)
+        .filter(
+            models.Location.id.in_(location_ids),
+            models.Location.is_deleted.is_(False),
+        )
+        .all()
+    )
+    existing_ids = {s[0] for s in existing}
+    missing = set(location_ids) - existing_ids
     if missing:
-        raise HTTPException(status_code=404, detail=f"Shops not found: {missing}")
-
-    # Store as list of dicts
-    shops_json = [{"shop_id": s.shop_id} for s in request.shops]
+        raise HTTPException(status_code=404, detail=f"Customers not found: {missing}")
 
     route = models.PredefinedRoute(
         name=request.name,
-        shops=shops_json
+        locations=[{"location_id": s.location_id} for s in request.locations],
     )
     db.add(route)
     db.commit()
@@ -32,34 +45,61 @@ def create_predefined_route(request: schemas.PredefinedRouteCreate, db: Session)
 
 
 def get_predefined_route(route_id: int, db: Session) -> models.PredefinedRoute:
-    route = db.query(models.PredefinedRoute).filter(models.PredefinedRoute.id == route_id).first()
+    route = (
+        db.query(models.PredefinedRoute)
+        .filter(
+            models.PredefinedRoute.id == route_id,
+            models.PredefinedRoute.is_deleted.is_(False),
+        )
+        .first()
+    )
     if not route:
         raise HTTPException(status_code=404, detail=f"Route {route_id} not found")
     return route
 
 
 def all_predefined_routes(db: Session):
-    return db.query(models.PredefinedRoute).all()
+    return (
+        db.query(models.PredefinedRoute)
+        .filter(models.PredefinedRoute.is_deleted.is_(False))
+        .all()
+    )
 
 
-def update_predefined_route(route_id: int, request: schemas.PredefinedRouteUpdate, db: Session):
-    route = db.query(models.PredefinedRoute).filter(models.PredefinedRoute.id == route_id).first()
-    if not route:
-        raise HTTPException(status_code=404, detail=f"Route {route_id} not found")
+def update_predefined_route(
+    route_id: int, request: schemas.PredefinedRouteUpdate, db: Session
+):
+    route = get_predefined_route(route_id, db)
 
     if request.name and request.name != route.name:
-        if db.query(models.PredefinedRoute).filter(models.PredefinedRoute.name == request.name).first():
-            raise HTTPException(status_code=400, detail=f"Route name '{request.name}' already exists")
+        if (
+            db.query(models.PredefinedRoute)
+            .filter(
+                models.PredefinedRoute.name == request.name,
+                models.PredefinedRoute.is_deleted.is_(False),
+            )
+            .first()
+        ):
+            raise HTTPException(
+                status_code=400, detail=f"Route name '{request.name}' already exists"
+            )
         route.name = request.name
 
-    if request.shops is not None:
-        shop_ids = [s.shop_id for s in request.shops]
-        existing_shops = db.query(models.GPSMaster.id).filter(models.GPSMaster.id.in_(shop_ids)).all()
-        existing_ids = {s[0] for s in existing_shops}
-        missing = set(shop_ids) - existing_ids
+    if request.locations is not None:
+        location_ids = [s.location_id for s in request.locations]
+        existing = (
+            db.query(models.Location.id)
+            .filter(
+                models.Location.id.in_(location_ids),
+                models.Location.is_deleted.is_(False),
+            )
+            .all()
+        )
+        existing_ids = {s[0] for s in existing}
+        missing = set(location_ids) - existing_ids
         if missing:
-            raise HTTPException(status_code=404, detail=f"Shops not found: {missing}")
-        route.shops = [{"shop_id": s.shop_id} for s in request.shops]
+            raise HTTPException(status_code=404, detail=f"Customers not found: {missing}")
+        route.locations = [{"location_id": s.location_id} for s in request.locations]
 
     db.commit()
     db.refresh(route)
@@ -67,9 +107,7 @@ def update_predefined_route(route_id: int, request: schemas.PredefinedRouteUpdat
 
 
 def delete_predefined_route(route_id: int, db: Session):
-    route = db.query(models.PredefinedRoute).filter(models.PredefinedRoute.id == route_id).first()
-    if not route:
-        raise HTTPException(status_code=404, detail=f"Route {route_id} not found")
-    db.delete(route)
+    route = get_predefined_route(route_id, db)
+    route.soft_delete()
     db.commit()
     return {"message": f"Route {route_id} deleted"}

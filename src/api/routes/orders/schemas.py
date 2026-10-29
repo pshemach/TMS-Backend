@@ -17,23 +17,23 @@ class TimeWindow(BaseModel):
 
 class OrderCreate(BaseModel):
     order_id: str
-    shop_id: int
+    location_id: int
     po_value: Optional[float] = None
     volume: Optional[float] = None
     po_date: Optional[date]
     time_window: Optional[TimeWindow] = None
-    priority: Optional[str] = None  # "low", "medium", "high"
+    priority: Optional[str] = None
 
 
 class OrderUpdate(BaseModel):
     order_id: Optional[str] = None
-    shop_id: Optional[int] = None
+    location_id: Optional[int] = None
     po_value: Optional[float] = None
     volume: Optional[float] = None
     po_date: Optional[date] = None
     time_window: Optional[TimeWindow] = None
-    priority: Optional[str] = None  # "low", "medium", "high"
-    status: Optional[str] = None  # "pending", "active", "completed"
+    priority: Optional[str] = None
+    status: Optional[str] = None
 
     @validator("priority")
     def validate_priority(cls, v):
@@ -51,8 +51,8 @@ class OrderUpdate(BaseModel):
 class OrderResponse(BaseModel):
     id: int
     order_id: str
-    shop_id: int
-    shop: dict
+    location_id: int
+    location: dict
     po_value: Optional[float]
     volume: Optional[float]
     po_date: Optional[date]
@@ -61,7 +61,7 @@ class OrderResponse(BaseModel):
     time_window_start: Optional[time] = None
     time_window_end: Optional[time] = None
     priority: Optional[str]
-    group: Optional[dict] = None  # {id, name}
+    group: Optional[dict] = None
 
     class Config:
         from_attributes = True

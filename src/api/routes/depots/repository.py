@@ -1,102 +1,104 @@
-from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
-from src.infrastructure.database import models
-from src.api.routes.depots import schemas
-from src.infrastructure.logging import logging
-from src.infrastructure.exceptions import TMSException
 import sys
+
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from src.api.routes.depots import schemas
+from src.infrastructure.database import models
+from src.infrastructure.exceptions import TMSException
+from src.infrastructure.logging import logging
+
+
+def _active_depots(db: Session):
+    return db.query(models.Location).filter(
+        models.Location.is_deleted.is_(False),
+        models.Location.location_type == models.LocationType.DEPOT,
+    )
 
 
 def get_all(db: Session):
     try:
-        depots = db.query(models.GPSMaster).filter(models.GPSMaster.brand == models.Depot.BRAND).all()
-        return depots
+        return _active_depots(db).all()
     except Exception as e:
         logging.error(f"Failed to fetch depots: {e}")
         raise TMSException(f"Unable to load depots: {e}", sys)
-    
+
+
 def get_depot(id: int, db: Session):
     try:
-        depot = db.query(models.GPSMaster).filter(
-            models.GPSMaster.id == id,
-            models.GPSMaster.brand ==  models.Depot.BRAND
-        ).first()
-        return depot
+        return _active_depots(db).filter(models.Location.id == id).first()
     except Exception as e:
         logging.error(f"Failed to fetch depot {id}: {e}")
         raise TMSException(f"Unable to load depot {id}: {e}", sys)
 
+
 def create(request: schemas.DepotRequest, db: Session):
     try:
-        new_depot = models.GPSMaster(
-            shop_code=request.depot_code, 
-            location=request.location,
-            address=request.address, 
-            brand= models.Depot.BRAND,  # Hardcoded as depot
-            district=request.district, 
+        row = models.Location(
+            location_code=request.location_code,
+            location_name=request.location_name,
+            address=request.address,
+            brand=None,
+            district=request.district,
             latitude=request.latitude,
             longitude=request.longitude,
-            matrix_status='to_create'
+            location_type=models.LocationType.DEPOT,
+            matrix_status=models.MatrixStatus.TO_CREATE,
         )
-        db.add(new_depot)
+        db.add(row)
         db.commit()
-        db.refresh(new_depot)
-        logging.info(f"Created depot with id {new_depot.id}")
-        return new_depot
+        db.refresh(row)
+        logging.info(f"Created depot with id {row.id}")
+        return row
     except IntegrityError as e:
         db.rollback()
         logging.error(f"Integrity error creating depot: {e}")
-        raise TMSException(f"Depot creation failed - duplicate or constraint violation: {e}", sys)
+        raise TMSException(
+            f"Depot creation failed - duplicate or constraint violation: {e}", sys
+        )
     except Exception as e:
         db.rollback()
         logging.error(f"Failed to create depot: {e}")
         raise TMSException(f"Depot creation failed: {e}", sys)
 
+
 def delete(id: int, db: Session):
     try:
-        depot = db.query(models.GPSMaster).filter(
-            models.GPSMaster.id == id,
-            models.GPSMaster.brand ==  models.Depot.BRAND
-        ).first()
-        
+        depot = _active_depots(db).filter(models.Location.id == id).first()
         if not depot:
-            return None  # Let route handle 404
-        
-        db.delete(depot)
+            return None
+
+        depot.location_code = f"{depot.location_code}__deleted_{depot.id}"
+        depot.soft_delete()
         db.commit()
-        logging.info(f"Deleted depot with id {id}")
+        logging.info(f"Soft-deleted depot with id {id}")
         return {"message": f"Depot with id {id} deleted"}
     except Exception as e:
         db.rollback()
         logging.error(f"Failed to delete depot {id}: {e}")
         raise TMSException(f"Unable to delete depot {id}: {e}", sys)
-    
+
+
 def update(id: int, request: schemas.DepotRequest, db: Session):
     try:
-        depot = db.query(models.GPSMaster).filter(
-            models.GPSMaster.id == id,
-            models.GPSMaster.brand ==  models.Depot.BRAND
-        ).first()
-        
+        depot = _active_depots(db).filter(models.Location.id == id).first()
         if not depot:
-            return None  # Let route handle 404
+            return None
 
         gps_changed = (
-            depot.latitude != request.latitude or 
-            depot.longitude != request.longitude
+            depot.latitude != request.latitude
+            or depot.longitude != request.longitude
         )
-        
-        # Update fields
-        depot.shop_code = request.depot_code
-        depot.location = request.location
+        depot.location_code = request.location_code
+        depot.location_name = request.location_name
         depot.address = request.address
-        depot.brand =  models.Depot.BRAND # Ensure it remains a depot
         depot.district = request.district
         depot.latitude = request.latitude
         depot.longitude = request.longitude
-        depot.matrix_status = 'to_update' if gps_changed else depot.matrix_status
-        
+        depot.location_type = models.LocationType.DEPOT
+        if gps_changed:
+            depot.matrix_status = models.MatrixStatus.TO_UPDATE
+
         db.commit()
         db.refresh(depot)
         logging.info(f"Updated depot with id {id}")
@@ -109,11 +111,11 @@ def update(id: int, request: schemas.DepotRequest, db: Session):
         db.rollback()
         logging.error(f"Failed to update depot {id}: {e}")
         raise TMSException(f"Unable to update depot {id}: {e}", sys)
-    
-def depot_coords(depot: models.GPSMaster) -> dict:
-    """Return only the fields the API needs."""
+
+
+def depot_coords(depot: models.Location) -> dict:
     return {
-        "depot_code": depot.shop_code,
+        "location_code": depot.location_code,
         "latitude": depot.latitude,
         "longitude": depot.longitude,
     }

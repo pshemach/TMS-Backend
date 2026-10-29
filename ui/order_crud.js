@@ -93,18 +93,18 @@ async function renderOrderTable(orders) {
   updateExportButton();
 
   const shopDetailsPromises = orders.map((o) =>
-    fetchShopDetails(o.shop.shop_code)
+    fetchShopDetails(o.location.location_code)
   );
   const shopDetails = await Promise.all(shopDetailsPromises);
 
   const shopMap = {};
   orders.forEach((o, i) => {
-    shopMap[o.shop.shop_code] = shopDetails[i];
+    shopMap[o.location.location_code] = shopDetails[i];
   });
 
   orderTableBody.innerHTML = orders
     .map((order, i) => {
-      const shop = shopMap[order.shop.shop_code] || {};
+      const shop = shopMap[order.location.location_code] || {};
       const checked = selectedOrders.has(order.order_id) ? "checked" : "";
       return `
       <tr>
@@ -113,7 +113,7 @@ async function renderOrderTable(orders) {
                  data-order-id="${order.order_id}" ${checked}>
         </td>
         <td><strong>${order.order_id}</strong></td>
-        <td>${order.shop.shop_code}</td>
+        <td>${order.location.location_code}</td>
         <td>${shop.location || "-"}</td>
         <td>${shop.address || "-"}</td>
         <td>${order.po_value?.toFixed(2) || "-"}</td>
@@ -161,9 +161,9 @@ function filterOrders() {
     filtered = filtered.filter(
       (o) =>
         o.order_id.toLowerCase().includes(search) ||
-        o.shop.shop_code.toLowerCase().includes(search) ||
-        (o.shop.location && o.shop.location.toLowerCase().includes(search)) ||
-        (o.shop.address && o.shop.address.toLowerCase().includes(search))
+        o.location.location_code.toLowerCase().includes(search) ||
+        (o.location.location && o.location.location.toLowerCase().includes(search)) ||
+        (o.location.address && o.location.address.toLowerCase().includes(search))
     );
   }
 
@@ -334,7 +334,7 @@ function setupShopAutocomplete() {
   list.innerHTML = allShopsList
     .map(
       (s) => `
-    <option value="${s.shop_code}">${s.location} - ${s.address || ""}</option>
+    <option value="${s.location_code}">${s.location_name} - ${s.address || ""}</option>
   `
     )
     .join("");
@@ -343,14 +343,14 @@ function setupShopAutocomplete() {
     const val = input.value.toLowerCase();
     const filtered = allShopsList.filter(
       (s) =>
-        s.shop_code.toLowerCase().includes(val) ||
-        s.location.toLowerCase().includes(val) ||
+        s.location_code.toLowerCase().includes(val) ||
+        s.location_name.toLowerCase().includes(val) ||
         (s.address && s.address.toLowerCase().includes(val))
     );
     list.innerHTML = filtered
       .map(
         (s) => `
-      <option value="${s.shop_code}">${s.location} - ${s.address || ""}</option>
+      <option value="${s.location_code}">${s.location_name} - ${s.address || ""}</option>
     `
       )
       .join("");
@@ -362,20 +362,20 @@ async function createOrder(data) {
   let payload = { ...data };
 
   // Resolve shop_id
-  if (payload.shop_code && !payload.shop_id) {
-    const shop = allShopsList.find((s) => s.shop_code === payload.shop_code);
-    if (shop) payload.shop_id = shop.id;
-    else throw new Error(`Shop "${payload.shop_code}" not found`);
+  if (payload.location_code && !payload.location_id) {
+    const shop = allShopsList.find((s) => s.location_code === payload.location_code);
+    if (shop) payload.location_id = shop.id;
+    else throw new Error(`Shop "${payload.location_code}" not found`);
   }
 
-  if (!payload.shop_id) throw new Error("Shop not found");
+  if (!payload.location_id) throw new Error("Shop not found");
 
   // Generate order_id if missing
   if (!payload.order_id) {
     payload.order_id = generateOrderId(payload.po_date);
   }
 
-  delete payload.shop_code;
+  delete payload.location_code;
 
   const res = await fetch(TMS_API.url("/order"), {
     method: "POST",
@@ -400,7 +400,7 @@ async function editOrder(id) {
 
     document.getElementById("orderId").value = order.id;
     document.getElementById("orderCode").value = order.order_id;
-    document.getElementById("shopSelect").value = order.shop.shop_code;
+    document.getElementById("shopSelect").value = order.location.location_code;
     document.getElementById("poValue").value = order.po_value || "";
     document.getElementById("volume").value = order.volume || "";
     document.getElementById("poDate").value = order.po_date;
@@ -443,7 +443,7 @@ document
 
 // Validate shop code
 async function validateShopCode(code) {
-  const shop = allShopsList.find((s) => s.shop_code === code);
+  const shop = allShopsList.find((s) => s.location_code === code);
   if (shop) {
     updateShopDetails(shop);
     return shop;
@@ -489,7 +489,7 @@ document.getElementById("orderForm").addEventListener("submit", async (e) => {
   if (!shop) return showToast("Invalid shop code", "danger");
 
   const payload = {
-    shop_id: shop.id,
+    location_id: shop.id,
     po_value: po_value ? parseFloat(po_value) : null,
     volume: volume ? parseFloat(volume) : null,
     po_date,
@@ -693,7 +693,7 @@ window.getSelectedOrderDetails = async function () {
   if (!orders.length) return [];
 
   const shopPromises = orders.map((o) =>
-    fetchShopDetails(o.shop.shop_code).catch(() => ({}))
+    fetchShopDetails(o.location.location_code).catch(() => ({}))
   );
   const shops = await Promise.all(shopPromises);
 

@@ -1,5 +1,6 @@
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 from src.infrastructure import config
+from src.infrastructure.logging import logging
 from typing import Optional, Union, List, Dict
 from datetime import time
 
@@ -114,8 +115,9 @@ class VRPSolver:
         
         solution = routing.SolveWithParameters(search_params)
         if not solution:
-            return set(), {}
-        
+            logging.warning("OR-Tools found no feasible solution")
+            return {}
+
         return self._extract_solution(manager, routing, solution, data, vehicles)
     
     def _add_time_dimension(self, routing, manager, data, vehicles, transit_idx):
@@ -195,12 +197,12 @@ class VRPSolver:
         if not order_groups or data["num_vehicles"] <= 1:
             return
         
-        for group_id, shop_ids in order_groups.items():
+        for group_id, location_ids in order_groups.items():
             # Find all node indices that belong to this group
             group_node_indices = []
             
             for node_idx, order_info in order_map.items():
-                if order_info['shop_id'] in shop_ids:
+                if order_info['location_id'] in location_ids:
                     index = manager.NodeToIndex(node_idx)
                     group_node_indices.append(index)
             
@@ -254,8 +256,8 @@ class VRPSolver:
             # Collect all nodes and indices in route
             while not routing.IsEnd(index):
                 node_idx = manager.IndexToNode(index)
-                shop_id = data["node_mapping"][node_idx]
-                route_nodes.append(shop_id)
+                location_id = data["node_mapping"][node_idx]
+                route_nodes.append(location_id)
                 route_indices.append(index)
                 
                 # Get order info (skip depot at index 0)

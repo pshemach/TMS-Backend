@@ -18,21 +18,22 @@ class MatrixSyncResponse(BaseModel):
 
 
 class MatrixStatsResponse(BaseModel):
-    total_shops_in_matrix: int
+    total_locations_in_matrix: int
     pending_updates: int
     total_distances_stored: int
     expected_distances: int
     matrix_completeness: str
 
 
-class PendingShopItem(BaseModel):
+class PendingLocationItem(BaseModel):
     id: int
-    shop_code: str
-    location: Optional[str] = None
+    location_code: str
+    location_name: Optional[str] = None
     brand: Optional[str] = None
+    location_type: Optional[str] = None
     matrix_status: Optional[str] = None
 
 
-class PendingShopsResponse(BaseModel):
+class PendingLocationsResponse(BaseModel):
     count: int
-    shops: List[PendingShopItem]
+    locations: List[PendingLocationItem]

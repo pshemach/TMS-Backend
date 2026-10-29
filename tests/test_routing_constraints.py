@@ -9,29 +9,29 @@ def test_geo_constraint_requires_two_different_known_shops(client):
 
     same_shop = client.post(
         "/geo-constraint/",
-        json={"start_shop_id": start["id"], "end_shop_id": start["id"]},
+        json={"start_location_id": start["id"], "end_location_id": start["id"]},
     )
     assert same_shop.status_code == 400
 
     missing = client.post(
         "/geo-constraint/",
-        json={"start_shop_id": start["id"], "end_shop_id": 99999},
+        json={"start_location_id": start["id"], "end_location_id": 99999},
     )
     assert missing.status_code == 404
 
     created = client.post(
         "/geo-constraint/",
-        json={"start_shop_id": start["id"], "end_shop_id": end["id"]},
+        json={"start_location_id": start["id"], "end_location_id": end["id"]},
     )
     assert created.status_code == 201
     body = created.json()
     assert body["vehicle"] is None
-    assert body["start_shop"]["shop_code"] == "START"
-    assert body["end_shop"]["shop_code"] == "END"
+    assert body["start_location"]["location_code"] == "START"
+    assert body["end_location"]["location_code"] == "END"
 
     duplicate = client.post(
         "/geo-constraint/",
-        json={"start_shop_id": start["id"], "end_shop_id": end["id"]},
+        json={"start_location_id": start["id"], "end_location_id": end["id"]},
     )
     assert duplicate.status_code == 400
     assert len(client.get("/geo-constraint/").json()) == 1
@@ -47,8 +47,8 @@ def test_geo_constraint_can_be_assigned_to_one_vehicle(client):
     created = client.post(
         "/geo-constraint/",
         json={
-            "start_shop_id": start["id"],
-            "end_shop_id": end["id"],
+            "start_location_id": start["id"],
+            "end_location_id": end["id"],
             "vehicle_id": vehicle["id"],
         },
     )
@@ -59,8 +59,8 @@ def test_geo_constraint_can_be_assigned_to_one_vehicle(client):
     again = client.post(
         "/geo-constraint/",
         json={
-            "start_shop_id": start["id"],
-            "end_shop_id": end["id"],
+            "start_location_id": start["id"],
+            "end_location_id": end["id"],
             "vehicle_id": vehicle["id"],
         },
     )
@@ -76,14 +76,14 @@ def test_geo_constraint_can_be_assigned_to_one_vehicle(client):
 
     missing_vehicle = client.post(
         "/geo-constraint/",
-        json={"start_shop_id": end["id"], "end_shop_id": start["id"], "vehicle_id": 99999},
+        json={"start_location_id": end["id"], "end_location_id": start["id"], "vehicle_id": 99999},
     )
     assert missing_vehicle.status_code == 404
 
     # Omitting vehicle_id is treated as an explicit clear.
     cleared = client.put(
         f"/geo-constraint/{created.json()['id']}",
-        json={"end_shop_id": end["id"]},
+        json={"end_location_id": end["id"]},
     )
     assert cleared.status_code == 200
     assert cleared.json()["vehicle"] is None
@@ -109,7 +109,7 @@ def test_predefined_route_keeps_shop_order_and_rejects_unknown_shops(client):
 
     missing = client.post(
         "/predefined-route/",
-        json={"name": "Coast", "shops": [{"shop_id": first["id"]}, {"shop_id": 99999}]},
+        json={"name": "Coast", "locations": [{"location_id": first["id"]}, {"location_id": 99999}]},
     )
     assert missing.status_code == 404
 
@@ -117,30 +117,30 @@ def test_predefined_route_keeps_shop_order_and_rejects_unknown_shops(client):
         "/predefined-route/",
         json={
             "name": "Coast",
-            "shops": [
-                {"shop_id": first["id"]},
-                {"shop_id": second["id"]},
-                {"shop_id": third["id"]},
+            "locations": [
+                {"location_id": first["id"]},
+                {"location_id": second["id"]},
+                {"location_id": third["id"]},
             ],
         },
     )
     assert created.status_code == 201
-    codes = [stop["shop"]["shop_code"] for stop in created.json()["shops"]]
+    codes = [stop["location"]["location_code"] for stop in created.json()["locations"]]
     assert codes == ["A", "B", "C"]
 
     duplicate = client.post(
         "/predefined-route/",
-        json={"name": "Coast", "shops": [{"shop_id": first["id"]}]},
+        json={"name": "Coast", "locations": [{"location_id": first["id"]}]},
     )
     assert duplicate.status_code == 400
 
     renamed = client.put(
         f"/predefined-route/{created.json()['id']}",
-        json={"name": "Hill", "shops": [{"shop_id": third["id"]}, {"shop_id": first["id"]}]},
+        json={"name": "Hill", "locations": [{"location_id": third["id"]}, {"location_id": first["id"]}]},
     )
     assert renamed.status_code == 200
     assert renamed.json()["name"] == "Hill"
-    assert [stop["shop"]["shop_code"] for stop in renamed.json()["shops"]] == ["C", "A"]
+    assert [stop["location"]["location_code"] for stop in renamed.json()["locations"]] == ["C", "A"]
 
     fetched = client.get(f"/predefined-route/{created.json()['id']}")
     assert fetched.status_code == 200

@@ -3,23 +3,23 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 
-class ShopInRoute(BaseModel):
-    shop_id: int
+class LocationInRoute(BaseModel):
+    location_id: int
 
 
 class PredefinedRouteCreate(BaseModel):
     name: str
-    shops: List[ShopInRoute]  # list of shop IDs
+    locations: List[LocationInRoute]
 
 
 class PredefinedRouteUpdate(BaseModel):
     name: Optional[str] = None
-    shops: Optional[List[ShopInRoute]] = None
+    locations: Optional[List[LocationInRoute]] = None
 
 
-class ShopInRouteResponse(BaseModel):
-    shop_id: int
-    shop: dict  # {shop_code, latitude, longitude}
+class LocationInRouteResponse(BaseModel):
+    location_id: int
+    location: dict
 
     class Config:
         from_attributes = True
@@ -28,7 +28,7 @@ class ShopInRouteResponse(BaseModel):
 class PredefinedRouteResponse(BaseModel):
     id: int
     name: str
-    shops: List[ShopInRouteResponse] = []
+    locations: List[LocationInRouteResponse] = []
 
     class Config:
         from_attributes = True
