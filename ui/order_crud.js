@@ -1,5 +1,5 @@
 // order_crud.js
-const ORDER_API_BASE = "http://localhost:8000/order";
+const ORDER_API_BASE = TMS_API.url("/order");
 let allOrders = [];
 
 // DOM Elements
@@ -44,7 +44,7 @@ function generateOrderId(poDate) {
 // Load Orders
 async function loadOrders() {
   try {
-    let url = ORDER_API_BASE;
+    let url = TMS_API.url("/order");
     const params = new URLSearchParams();
 
     if (orderStatusFilter.value)
@@ -69,7 +69,7 @@ async function loadOrders() {
 async function fetchShopDetails(shop_code) {
   try {
     const res = await fetch(
-      `http://localhost:8000/master/shop/shop_code/${shop_code}`
+      TMS_API.url(`/location/customer/code/${shop_code}`)
     );
     if (!res.ok) throw new Error("Shop not found");
     return await res.json();
@@ -318,7 +318,7 @@ let allShopsList = [];
 // Fetch all shops
 async function fetchAllShops() {
   try {
-    const res = await fetch("http://localhost:8000/master/shop");
+    const res = await fetch(TMS_API.url("/location/customer"));
     if (!res.ok) throw new Error("Failed to load shops");
     allShopsList = await res.json();
     setupShopAutocomplete();
@@ -377,7 +377,7 @@ async function createOrder(data) {
 
   delete payload.shop_code;
 
-  const res = await fetch(ORDER_API_BASE, {
+  const res = await fetch(TMS_API.url("/order"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -450,7 +450,7 @@ async function validateShopCode(code) {
   }
 
   const res = await fetch(
-    `http://localhost:8000/master/shop/shop_code/${code}`
+    TMS_API.url(`/location/customer/code/${code}`)
   );
   if (!res.ok) {
     updateShopDetails(null);
@@ -508,7 +508,7 @@ document.getElementById("orderForm").addEventListener("submit", async (e) => {
   }
 
   const method = orderId ? "PUT" : "POST";
-  const url = orderId ? `${ORDER_API_BASE}/${orderId}` : ORDER_API_BASE;
+  const url = orderId ? `${ORDER_API_BASE}/${orderId}` : TMS_API.url("/order");
 
   try {
     const res = await fetch(url, {

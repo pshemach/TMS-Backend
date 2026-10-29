@@ -98,9 +98,9 @@
     try {
       console.log("Fetching vehicles, routes, and depots...");
       const [vehiclesRes, routesRes, depotsRes] = await Promise.all([
-        fetch("http://localhost:8000/vehicle"),
-        fetch("http://localhost:8000/predefined-route"),
-        fetch("http://localhost:8000/master/depot"),
+        fetch(TMS_API.url("/vehicle")),
+        fetch(TMS_API.url("/predefined-route")),
+        fetch(TMS_API.url("/location/depot")),
       ]);
 
       console.log("Vehicle response status:", vehiclesRes.status);
@@ -438,7 +438,7 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Running...';
 
-        const res = await fetch("http://localhost:8000/optimize/", {
+        const res = await fetch(TMS_API.url("/optimize"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),

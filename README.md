@@ -71,8 +71,8 @@ Interactive docs:
 
 | Area | Prefix | Notes |
 |---|---|---|
-| Shops | `/master/shop` | Shop master records |
-| Depots | `/master/depot` | Depot master records |
+| Customers | `/location/customer` | Customer location records |
+| Depots | `/location/depot` | Depot location records |
 | Fleets | `/fleet` | |
 | Vehicles | `/vehicle` | Create under `POST /vehicle/{fleet_id}` |
 | Vehicle constraints | `/vehicle-constraint` | `PUT /vehicle-constraint/{vehicle_id}` |
@@ -124,24 +124,28 @@ Settings are read in `src/infrastructure/config.py`. Copy `.env.example` to `.en
 | `OUTPUT_FOLDER` | Solver and map output | `outputs` |
 | `DATABASE_FOLDER` | SQLite directory, used when `DATABASE_URL` is unset | `database` |
 | `DATABASE_URL` | SQLAlchemy URL | SQLite file for `CLIENT` |
+| `HOST` | Uvicorn bind host (`python main.py`) | `0.0.0.0` |
+| `PORT` | Uvicorn bind port (`python main.py`) | `8000` |
+| `RELOAD` | Auto-reload when using `python main.py` | `false` |
+| `API_PUBLIC_URL` | Browser API origin; leave empty for same-origin UI | _(empty)_ |
 | `SOLVER_TIME_LIMIT_SECONDS` | OR-Tools time limit | `30` |
 | `OSRM_BASE_URL` | OSRM route service | `http://router.project-osrm.org/route/v1/car` |
 
 Resolved paths look like `data/common/master/` and `data/common/outputs/`. The app creates these directories on startup. Logs go to `logs/`.
 
+The UI loads `/runtime-config.js` then uses relative API paths by default, so changing `HOST`/`PORT` (or hosting behind a reverse proxy) does not require editing JS. Set `API_PUBLIC_URL` only if the UI is hosted on a different origin than the API.
+
 ## Run
 
 ```powershell
-uv run uvicorn main:app --reload
+uv run uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Or:
+Or (uses `HOST` / `PORT` / `RELOAD` from `.env`):
 
 ```powershell
 uv run python main.py
 ```
-
-`python main.py` listens on `0.0.0.0:8000` without auto-reload. The Uvicorn command above reloads when code changes and serves `http://127.0.0.1:8000`.
 
 ## Tests
 

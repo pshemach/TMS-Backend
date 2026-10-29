@@ -5,8 +5,7 @@ from src.api.routes.vehicle_constraints import schemas
 from src.infrastructure.database import models
 from src.api.deps import get_db
 
-
-router = APIRouter(prefix='/vehicle-constraint', tags=['vehicle-constraint'])
+router = APIRouter(tags=['vehicle-constraint'])
 
 # === Helper: Enrich Vehicle Constraint ===
 def _enrich(constraint: models.VehicleConstrain) -> schemas.VehicleConstrainResponse:
@@ -25,7 +24,7 @@ def _enrich(constraint: models.VehicleConstrain) -> schemas.VehicleConstrainResp
     )
 
 # === Update vehicle constraint ===
-@router.put('/{vehicle_id}', status_code=status.HTTP_202_ACCEPTED, response_model=schemas.VehicleConstrainResponse)
+@router.put('/vehicle-constraint/{vehicle_id}', status_code=status.HTTP_202_ACCEPTED, response_model=schemas.VehicleConstrainResponse)
 def update_vehicle_constraint(vehicle_id: int, request: schemas.VehicleConstrainRequest, db: Session = Depends(get_db)):
     """
     Update constraints for a specific vehicle.

@@ -6,8 +6,7 @@ from src.api.routes.depots import schemas
 from src.infrastructure.database import models
 from src.api.deps import get_db
 
-
-router = APIRouter(prefix='/master', tags=['depot'])
+router = APIRouter(prefix='/location', tags=['location'])
 
 # === Helper: Enrich Depot ===
 def _enrich(depot: models.GPSMaster) -> schemas.DepotResponse:

@@ -56,6 +56,19 @@ DATABASE_URL = os.getenv(
 )
 
 # ========================================
+# Server (uvicorn)
+# ========================================
+
+HOST = os.getenv("HOST", "0.0.0.0")
+PORT = int(os.getenv("PORT", "8000"))
+RELOAD = os.getenv("RELOAD", "false").lower() in ("1", "true", "yes")
+
+# Public API origin for the browser UI.
+# Leave empty when UI is served by this same FastAPI app (same-origin / relative URLs).
+# Set only when the UI is hosted separately, e.g. "https://api.example.com"
+API_PUBLIC_URL = os.getenv("API_PUBLIC_URL", "").rstrip("/")
+
+# ========================================
 # Solver
 # ========================================
 
@@ -68,10 +81,10 @@ SOLVER_TIME_LIMIT_SECONDS = int(os.getenv("SOLVER_TIME_LIMIT_SECONDS", "30"))
 OSRM_BASE_URL = os.getenv(
     "OSRM_BASE_URL",
     "http://router.project-osrm.org/route/v1/car",
-)
+).rstrip("/")
 
 # ========================================
-# Logging
+# Logging / UI
 # ========================================
 
 LOG_DIR = PROJECT_ROOT / "logs"

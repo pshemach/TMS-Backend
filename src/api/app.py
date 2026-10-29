@@ -1,7 +1,10 @@
-"""FastAPI application factory and router registration."""
+"""FastAPI application — API routers + UI."""
+
+import json
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from src.api.routes.depots.endpoints import router as depots_router
@@ -13,9 +16,10 @@ from src.api.routes.optimization.endpoints import router as optimization_router
 from src.api.routes.order_groups.endpoints import router as order_groups_router
 from src.api.routes.orders.endpoints import router as orders_router
 from src.api.routes.predefined_routes.endpoints import router as predefined_routes_router
-from src.api.routes.shops.endpoints import router as shops_router
+from src.api.routes.customers.endpoints import router as customers_router
 from src.api.routes.vehicle_constraints.endpoints import router as vehicle_constraints_router
 from src.api.routes.vehicles.endpoints import router as vehicles_router
+from src.infrastructure import config
 from src.infrastructure.config import UI_DIR, ensure_directories, validate
 from src.infrastructure.database import models
 from src.infrastructure.database.session import engine
@@ -23,7 +27,7 @@ from src.infrastructure.database.session import engine
 validate()
 ensure_directories()
 
-app = FastAPI(description=f"{'=' * 10} TMS BACKEND API {'=' * 10}")
+app = FastAPI(title="TMS Backend", description="Transport Management System API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,7 +39,8 @@ app.add_middleware(
 
 models.Base.metadata.create_all(bind=engine)
 
-app.include_router(shops_router)
+# --- API ---
+app.include_router(customers_router)
 app.include_router(depots_router)
 app.include_router(fleets_router)
 app.include_router(vehicles_router)
@@ -48,5 +53,20 @@ app.include_router(optimization_router)
 app.include_router(jobs_router)
 app.include_router(matrix_router)
 
-# Serve UI last so API routes keep priority. `/` opens index.html.
-app.mount("/", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
+
+@app.get("/runtime-config.js", include_in_schema=False)
+def runtime_config_js():
+    """Browser config from env. Empty API_PUBLIC_URL = same-origin."""
+    return Response(
+        content=f"window.__TMS_API_BASE__ = {json.dumps(config.API_PUBLIC_URL)};\n",
+        media_type="application/javascript",
+    )
+
+
+@app.get("/", include_in_schema=False)
+def ui_index():
+    return FileResponse(UI_DIR / "index.html")
+
+
+# UI assets at /static/* — isolated from API paths (/fleet, /order, …)
+app.mount("/static", StaticFiles(directory=str(UI_DIR)), name="static")

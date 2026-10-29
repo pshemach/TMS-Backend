@@ -5,10 +5,9 @@ from src.infrastructure.database import models
 from src.api.deps import get_db
 from src.api.routes.order_groups import repository as ops
 from src.api.routes.order_groups import schemas
-from src.api.routes.shops.repository import shop_coords
+from src.api.routes.customers.repository import shop_coords
 
-router = APIRouter(prefix="/order-group", tags=["order-group"])
-
+router = APIRouter(tags=["order-group"])
 
 def _enrich_order(order: models.Order) -> schemas.OrderResponse:
     return schemas.OrderResponse(
@@ -28,7 +27,6 @@ def _enrich_order(order: models.Order) -> schemas.OrderResponse:
         group=None  # optional
     )
 
-
 def _enrich_group(group: models.OrderGroup) -> schemas.OrderGroupResponse:
     return schemas.OrderGroupResponse(
         id=group.id,
@@ -37,31 +35,28 @@ def _enrich_group(group: models.OrderGroup) -> schemas.OrderGroupResponse:
         orders=[_enrich_order(o) for o in group.orders]
     )
 
-
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=schemas.OrderGroupResponse)
+@router.post("/order-group", status_code=status.HTTP_201_CREATED, response_model=schemas.OrderGroupResponse)
 def create(request: schemas.OrderGroupCreate, db: Session = Depends(get_db)):
     group = ops.create_order_group(request, db)
     return _enrich_group(group)
 
-@router.get("/", response_model=List[schemas.OrderGroupResponse])
+@router.get("/order-group", response_model=List[schemas.OrderGroupResponse])
 def get_all(db: Session = Depends(get_db)):
     groups = db.query(models.OrderGroup).options(
         joinedload(models.OrderGroup.orders).joinedload(models.Order.shop)
     ).all()
     return [_enrich_group(g) for g in groups]
 
-@router.get("/{group_id}", response_model=schemas.OrderGroupResponse)
+@router.get("/order-group/{group_id}", response_model=schemas.OrderGroupResponse)
 def get(group_id: int, db: Session = Depends(get_db)):
     group = ops.get_order_group(group_id, db)
     return _enrich_group(group)
 
-
-@router.put("/{group_id}", response_model=schemas.OrderGroupResponse)
+@router.put("/order-group/{group_id}", response_model=schemas.OrderGroupResponse)
 def update(group_id: int, request: schemas.OrderGroupUpdate, db: Session = Depends(get_db)):
     group = ops.update_order_group(group_id, request, db)
     return _enrich_group(group)
 
-
-@router.delete("/{group_id}", status_code=status.HTTP_200_OK)
+@router.delete("/order-group/{group_id}", status_code=status.HTTP_200_OK)
 def delete(group_id: int, db: Session = Depends(get_db)):
     return ops.delete_order_group(group_id, db)

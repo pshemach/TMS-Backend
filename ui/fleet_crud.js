@@ -1,14 +1,14 @@
 // fleet_crud.js
 // Basic fleet + vehicle CRUD for frontend
-const FLEET_API_BASE = "http://localhost:8000/fleet";
-const VEHICLE_API_BASE = "http://localhost:8000/vehicle";
+const FLEET_API_BASE = TMS_API.url("/fleet");
+const VEHICLE_API_BASE = TMS_API.url("/vehicle");
 
 let fleets = [];
 let vehicles = [];
 let selectedFleetId = null;
 
 // Constraint API base
-const VEHICLE_CONSTRAINT_API = "http://localhost:8000/vehicle-constraint";
+const VEHICLE_CONSTRAINT_API = TMS_API.url("/vehicle-constraint");
 
 // DOM refs
 const fleetsTableBody = document.querySelector("#fleetsTable tbody");
@@ -32,12 +32,19 @@ function toast(msg, type = "info") {
 
 async function loadFleets() {
   try {
-    const res = await fetch(FLEET_API_BASE + "/", { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to load fleets");
+    const res = await fetch(TMS_API.url("/fleet"), { cache: "no-store" });
+    if (!res.ok) {
+      const detail = await res.text();
+      throw new Error(detail || `Failed to load fleets (${res.status})`);
+    }
     fleets = await res.json();
+    if (!Array.isArray(fleets)) {
+      throw new Error("Unexpected fleet response");
+    }
     renderFleets(fleets);
     populateFleetSelect();
   } catch (err) {
+    console.error("loadFleets", err);
     toast(err.message, "danger");
   }
 }
@@ -116,13 +123,20 @@ function selectFleet(id) {
 
 async function loadVehicles(fleet_id = null) {
   try {
-    let url = VEHICLE_API_BASE + "/";
+    let url = TMS_API.url("/vehicle");
     if (fleet_id) url += `?fleet_id=${fleet_id}`;
     const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) throw new Error("Failed to load vehicles");
+    if (!res.ok) {
+      const detail = await res.text();
+      throw new Error(detail || `Failed to load vehicles (${res.status})`);
+    }
     vehicles = await res.json();
+    if (!Array.isArray(vehicles)) {
+      throw new Error("Unexpected vehicle response");
+    }
     applyVehicleFilters();
   } catch (err) {
+    console.error("loadVehicles", err);
     toast(err.message, "danger");
   }
 }
@@ -306,7 +320,7 @@ async function submitFleetForm(e) {
         body: JSON.stringify(payload),
       });
     } else {
-      res = await fetch(`${FLEET_API_BASE}/`, {
+      res = await fetch(TMS_API.url("/fleet"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

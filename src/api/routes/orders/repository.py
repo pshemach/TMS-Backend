@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 from src.infrastructure.database import models
 from src.api.routes.orders import schemas
-from src.api.routes.shops.repository import shop_coords
+from src.api.routes.customers.repository import shop_coords
 from src.infrastructure.database.models import OrderStatus, Priority
 from datetime import date
 from typing import List

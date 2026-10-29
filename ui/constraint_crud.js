@@ -152,7 +152,7 @@ document
 
     try {
       const res = await fetch(
-        `http://localhost:8000/order/order_id/${orderId}`,
+        TMS_API.url(`/order/order_id/${orderId}`),
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -186,7 +186,7 @@ document
 
     try {
       const res = await fetch(
-        `http://localhost:8000/order/order_id/${orderId}`,
+        TMS_API.url(`/order/order_id/${orderId}`),
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -222,7 +222,7 @@ document
 
 /* ------------------- GROUP MANAGEMENT ------------------- */
 async function createGroup(payload) {
-  const res = await fetch("http://localhost:8000/order-group", {
+  const res = await fetch(TMS_API.url("/order-group"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -235,7 +235,7 @@ async function createGroup(payload) {
 }
 
 async function deleteGroup(groupId) {
-  const res = await fetch(`http://localhost:8000/order-group/${groupId}`, {
+  const res = await fetch(TMS_API.url(`/order-group/${groupId}`), {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to delete group");
@@ -246,8 +246,8 @@ async function fetchOrderGroups() {
   try {
     // Fetch both groups and all orders (not just active)
     const [groupsRes, ordersRes] = await Promise.all([
-      fetch("http://localhost:8000/order-group"),
-      fetch("http://localhost:8000/order"), // Fetch ALL orders
+      fetch(TMS_API.url("/order-group")),
+      fetch(TMS_API.url("/order")), // Fetch ALL orders
     ]);
 
     if (!groupsRes.ok) throw new Error("Failed to fetch groups");

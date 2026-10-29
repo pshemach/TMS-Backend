@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from src.infrastructure.database import models
 from src.api.routes.geo_constraints import schemas
-from src.api.routes.shops.repository import shop_coords, get_shop   # <-- reuse
+from src.api.routes.customers.repository import shop_coords, get_shop   # <-- reuse
 
 # --------------------------------------------------------------
 # PRIVATE helpers

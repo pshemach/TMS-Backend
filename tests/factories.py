@@ -96,13 +96,13 @@ def constraint_payload(**overrides) -> dict:
 
 
 def create_shop(client, **overrides) -> dict:
-    response = client.post("/master/shop", json=shop_payload(**overrides))
+    response = client.post("/location/customer", json=shop_payload(**overrides))
     assert response.status_code == 201, response.text
     return response.json()
 
 
 def create_depot(client, **overrides) -> dict:
-    response = client.post("/master/depot", json=depot_payload(**overrides))
+    response = client.post("/location/depot", json=depot_payload(**overrides))
     assert response.status_code == 201, response.text
     return response.json()
 

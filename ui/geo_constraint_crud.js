@@ -9,8 +9,8 @@ let selectedVehicle = null;
 async function loadGeoConstraintData() {
   try {
     const [shopsRes, vehiclesRes] = await Promise.all([
-      fetch("http://localhost:8000/master/shop"),
-      fetch("http://localhost:8000/vehicle"),
+      fetch(TMS_API.url("/location/customer")),
+      fetch(TMS_API.url("/vehicle")),
     ]);
 
     if (!shopsRes.ok || !vehiclesRes.ok) throw new Error("Failed to load data");
@@ -245,7 +245,7 @@ function validateVehicle(vehicleName) {
 // Fetch & render
 async function fetchGeoConstraints() {
   try {
-    const res = await fetch("http://localhost:8000/geo-constraint");
+    const res = await fetch(TMS_API.url("/geo-constraint"));
     if (!res.ok) throw new Error("Failed");
     const data = await res.json();
 
@@ -256,10 +256,10 @@ async function fetchGeoConstraints() {
           // Fetch full shop details for start and end shops
           const [startShopRes, endShopRes] = await Promise.all([
             fetch(
-              `http://localhost:8000/master/shop/shop_code/${constraint.start_shop.shop_code}`
+              TMS_API.url(`/location/customer/code/${constraint.start_shop.shop_code}`)
             ),
             fetch(
-              `http://localhost:8000/master/shop/shop_code/${constraint.end_shop.shop_code}`
+              TMS_API.url(`/location/customer/code/${constraint.end_shop.shop_code}`)
             ),
           ]);
 
@@ -376,8 +376,8 @@ document
     try {
       const method = id ? "PUT" : "POST";
       const url = id
-        ? `http://localhost:8000/geo-constraint/${id}`
-        : "http://localhost:8000/geo-constraint";
+        ? TMS_API.url(`/geo-constraint/${id}`)
+        : TMS_API.url("/geo-constraint");
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
@@ -416,7 +416,7 @@ document
       // Load data first to ensure shops/vehicles are available
       await loadGeoConstraintData();
 
-      const res = await fetch(`http://localhost:8000/geo-constraint/${id}`);
+      const res = await fetch(TMS_API.url(`/geo-constraint/${id}`));
       if (!res.ok) throw new Error("Failed to load constraint");
       const geo = await res.json();
 
@@ -453,7 +453,7 @@ document
 
     const id = btn.dataset.id;
     try {
-      const res = await fetch(`http://localhost:8000/geo-constraint/${id}`, {
+      const res = await fetch(TMS_API.url(`/geo-constraint/${id}`), {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Delete failed");

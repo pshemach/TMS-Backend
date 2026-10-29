@@ -5,11 +5,10 @@ from src.infrastructure.database import models
 from src.api.deps import get_db
 from src.api.routes.orders import repository as ops
 from src.api.routes.orders import schemas
-from src.api.routes.shops.repository import shop_coords
+from src.api.routes.customers.repository import shop_coords
 from datetime import date
 
-
-router = APIRouter(prefix="/order", tags=["order"])
+router = APIRouter(tags=["order"])
 
 def _enrich(order: models.Order) -> schemas.OrderResponse:
     return schemas.OrderResponse(
@@ -31,42 +30,39 @@ def _enrich(order: models.Order) -> schemas.OrderResponse:
         group=None  # optional
     )
 
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=schemas.OrderResponse)
+@router.post("/order", status_code=status.HTTP_201_CREATED, response_model=schemas.OrderResponse)
 def create(request: schemas.OrderCreate, db: Session = Depends(get_db)):
     order = ops.create_order(request, db)
     return _enrich(order)
 
-
-@router.get("/{id}", response_model=schemas.OrderResponse)
+@router.get("/order/{id}", response_model=schemas.OrderResponse)
 def get_one(id: int, db: Session = Depends(get_db)):
     order = ops.get_order(id, db)
     return _enrich(order)
 
-
-@router.get("/po/{po_id}", response_model=schemas.OrderResponse)
+@router.get("/order/po/{po_id}", response_model=schemas.OrderResponse)
 def get_by_po(po_id: str, db: Session = Depends(get_db)):
     order = ops.get_order_by_po(po_id, db)
     return _enrich(order)
 
-
-@router.put("/{id}", response_model=schemas.OrderResponse)
+@router.put("/order/{id}", response_model=schemas.OrderResponse)
 def update(id: int, request: schemas.OrderUpdate, db: Session = Depends(get_db)):
     order = ops.update_order(id, request, db)
     return _enrich(order)
 
-@router.put("/order_id/{id}", response_model=schemas.OrderResponse)
+@router.put("/order/order_id/{id}", response_model=schemas.OrderResponse)
 def update(id: str, request: schemas.OrderUpdate, db: Session = Depends(get_db)):
     order = ops.update_order_oid(id, request, db)
     return _enrich(order)
 
-@router.delete("/{id}", status_code=status.HTTP_200_OK)
+@router.delete("/order/{id}", status_code=status.HTTP_200_OK)
 def delete(id: int, db: Session = Depends(get_db)):
     order = db.query(models.Order).filter(models.Order.id==id).first()
     if order.status == models.OrderStatus.COMPLETED:
         raise HTTPException(status_code=400, detail=f"Order {order.order_id} has already completed")
     return ops.delete_order(db=db, order_db_id=id)
 
-@router.get("/", response_model=List[schemas.OrderResponse])
+@router.get("/order", response_model=List[schemas.OrderResponse])
 def list_all(
     status: Optional[str] = None,           # filter by status
     date_from: Optional[date] = None,
