@@ -5,7 +5,7 @@
 
   console.log("Visualization.js loaded");
 
-  const API_BASE = "http://localhost:8000";
+  const API_BASE = TMS_API.base;
 
   // Helper function for toast
   const toast =

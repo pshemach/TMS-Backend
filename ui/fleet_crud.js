@@ -1,14 +1,14 @@
 // fleet_crud.js
 // Basic fleet + vehicle CRUD for frontend
-const FLEET_API_BASE = "http://localhost:8000/fleet";
-const VEHICLE_API_BASE = "http://localhost:8000/vehicle";
+const FLEET_API_BASE = TMS_API.url("/fleet");
+const VEHICLE_API_BASE = TMS_API.url("/vehicle");
 
 let fleets = [];
 let vehicles = [];
 let selectedFleetId = null;
 
 // Constraint API base
-const VEHICLE_CONSTRAINT_API = "http://localhost:8000/vehicle-constraint";
+const VEHICLE_CONSTRAINT_API = TMS_API.url("/vehicle-constraint");
 
 // DOM refs
 const fleetsTableBody = document.querySelector("#fleetsTable tbody");

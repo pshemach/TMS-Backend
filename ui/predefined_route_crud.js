@@ -5,7 +5,7 @@ let selectedRouteShops = []; // [{shop_id, shop_code, location, address, latitud
 async function loadRouteShops() {
   // Always load fresh data to ensure it's up-to-date
   try {
-    const res = await fetch("http://localhost:8000/master/shop");
+    const res = await fetch(TMS_API.url("/master/shop"));
     if (!res.ok) throw new Error("Failed to load shops");
     routeShops = await res.json();
     console.log("Loaded shops for routes:", routeShops.length);
@@ -243,8 +243,8 @@ document
     try {
       const method = id ? "PUT" : "POST";
       const url = id
-        ? `http://localhost:8000/predefined-route/${id}`
-        : "http://localhost:8000/predefined-route";
+        ? TMS_API.url(`/predefined-route/${id}`)
+        : TMS_API.url("/predefined-route");
 
       const res = await fetch(url, {
         method,
@@ -273,7 +273,7 @@ document
 // Fetch & render
 async function fetchPredefinedRoutes() {
   try {
-    const res = await fetch("http://localhost:8000/predefined-route");
+    const res = await fetch(TMS_API.url("/predefined-route"));
     if (!res.ok) throw new Error("Failed");
     const routes = await res.json();
 
@@ -285,7 +285,7 @@ async function fetchPredefinedRoutes() {
             route.shops.map(async (shopEntry) => {
               try {
                 const shopRes = await fetch(
-                  `http://localhost:8000/master/shop/shop_code/${shopEntry.shop.shop_code}`
+                  TMS_API.url(`/master/shop/shop_code/${shopEntry.shop.shop_code}`)
                 );
                 if (shopRes.ok) {
                   const fullShopData = await shopRes.json();
@@ -379,7 +379,7 @@ function renderPredefinedRoutes(routes) {
     btn.addEventListener("click", async () => {
       const id = btn.dataset.id;
       try {
-        const res = await fetch(`http://localhost:8000/predefined-route/${id}`);
+        const res = await fetch(TMS_API.url(`/predefined-route/${id}`));
         if (!res.ok) throw new Error("Failed to load route");
         const route = await res.json();
         await openPredefinedRouteModal(route);
@@ -396,7 +396,7 @@ function renderPredefinedRoutes(routes) {
       const id = btn.dataset.id;
       try {
         const res = await fetch(
-          `http://localhost:8000/predefined-route/${id}`,
+          TMS_API.url(`/predefined-route/${id}`),
           { method: "DELETE" }
         );
         if (!res.ok) throw new Error("Delete failed");

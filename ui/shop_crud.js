@@ -1,5 +1,5 @@
 // shop_crud.js
-const API_BASE = "http://localhost:8000/master"; // Change if needed
+const API_BASE = TMS_API.url("/master");
 let allShops = [];
 
 // Sri Lankan Districts

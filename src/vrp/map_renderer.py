@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from src.infrastructure.database import models
 from src.infrastructure.logging import logging
 from src.infrastructure.exceptions import TMSException
+from src.infrastructure.config import OSRM_BASE_URL
 import requests
 import json
 import ast
@@ -297,8 +298,9 @@ class MapManager:
             
     def _get_osrm_route(self, origin: Tuple[float, float],destination: Tuple[float, float]) -> Optional[List[Tuple[float, float]]]:
         """Get route from OSRM API."""
-        # OSRM expects longitude,latitude format
-        url = f"http://router.project-osrm.org/route/v1/driving/{origin[1]},{origin[0]};{destination[1]},{destination[0]}"
+        # OSRM expects longitude,latitude format; reuse configured base (…/car or …/driving)
+        base = OSRM_BASE_URL.rsplit("/", 1)[0]  # strip profile segment
+        url = f"{base}/driving/{origin[1]},{origin[0]};{destination[1]},{destination[0]}"
         params = {
             'overview': 'full',
             'geometries': 'geojson'

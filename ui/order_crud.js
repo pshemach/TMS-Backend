@@ -1,5 +1,5 @@
 // order_crud.js
-const ORDER_API_BASE = "http://localhost:8000/order";
+const ORDER_API_BASE = TMS_API.url("/order");
 let allOrders = [];
 
 // DOM Elements
@@ -69,7 +69,7 @@ async function loadOrders() {
 async function fetchShopDetails(shop_code) {
   try {
     const res = await fetch(
-      `http://localhost:8000/master/shop/shop_code/${shop_code}`
+      TMS_API.url(`/master/shop/shop_code/${shop_code}`)
     );
     if (!res.ok) throw new Error("Shop not found");
     return await res.json();
@@ -318,7 +318,7 @@ let allShopsList = [];
 // Fetch all shops
 async function fetchAllShops() {
   try {
-    const res = await fetch("http://localhost:8000/master/shop");
+    const res = await fetch(TMS_API.url("/master/shop"));
     if (!res.ok) throw new Error("Failed to load shops");
     allShopsList = await res.json();
     setupShopAutocomplete();
@@ -450,7 +450,7 @@ async function validateShopCode(code) {
   }
 
   const res = await fetch(
-    `http://localhost:8000/master/shop/shop_code/${code}`
+    TMS_API.url(`/master/shop/shop_code/${code}`)
   );
   if (!res.ok) {
     updateShopDetails(null);

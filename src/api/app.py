@@ -1,7 +1,10 @@
 """FastAPI application factory and router registration."""
 
+import json
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 
 from src.api.routes.depots.endpoints import router as depots_router
@@ -16,6 +19,7 @@ from src.api.routes.predefined_routes.endpoints import router as predefined_rout
 from src.api.routes.shops.endpoints import router as shops_router
 from src.api.routes.vehicle_constraints.endpoints import router as vehicle_constraints_router
 from src.api.routes.vehicles.endpoints import router as vehicles_router
+from src.infrastructure import config
 from src.infrastructure.config import UI_DIR, ensure_directories, validate
 from src.infrastructure.database import models
 from src.infrastructure.database.session import engine
@@ -47,6 +51,16 @@ app.include_router(order_groups_router)
 app.include_router(optimization_router)
 app.include_router(jobs_router)
 app.include_router(matrix_router)
+
+
+@app.get("/runtime-config.js", include_in_schema=False)
+def runtime_config_js():
+    """Inject browser API base from server env (empty = same-origin)."""
+    body = (
+        f"window.__TMS_API_BASE__ = {json.dumps(config.API_PUBLIC_URL)};\n"
+    )
+    return Response(content=body, media_type="application/javascript")
+
 
 # Serve UI last so API routes keep priority. `/` opens index.html.
 app.mount("/", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
