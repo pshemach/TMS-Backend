@@ -1,0 +1,5 @@
+"""Shared FastAPI dependencies."""
+
+from src.infrastructure.database.session import get_db
+
+__all__ = ["get_db"]

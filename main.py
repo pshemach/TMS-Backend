@@ -8,18 +8,11 @@ from src.database import models
 from src.database.database import engine
 import uvicorn
 
-app = FastAPI(description=f"{'='*10} TMS BACKEND API {'='*10}")
+import uvicorn
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins for development
-    allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
-)
+from src.api.app import app
 
-models.Base.metadata.create_all(bind=engine)
+__all__ = ["app"]
 
 app.include_router(shop_routes.router)
 app.include_router(depot_routes.router)

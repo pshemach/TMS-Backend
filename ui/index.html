@@ -1,0 +1,2039 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Delivery Management System</title>
+
+    <!-- Bootstrap 5 -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+
+    <!-- XLSX for Excel upload -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+      .toast-container {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        z-index: 1055;
+      }
+      .table th {
+        background-color: #f8f9fa;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+      .filter-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+      }
+      .table-container {
+        max-height: calc(100vh - 280px);
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+      }
+      .table-container table {
+        margin-bottom: 0;
+      }
+      .table-container::-webkit-scrollbar {
+        width: 8px;
+      }
+      .table-container::-webkit-scrollbar-track {
+        background: #f8f9fa;
+      }
+      .table-container::-webkit-scrollbar-thumb {
+        background-color: #adb5bd;
+        border-radius: 4px;
+      }
+      #shopSelect:focus {
+        background-color: #fff;
+      }
+      #shopDetails {
+        min-height: 24px;
+      }
+      .nav-tabs .nav-link.active {
+        font-weight: 600;
+      }
+      /* Reduced height specifically for Shops table */
+      .shop-table-container {
+        max-height: 400px; /* adjust as needed */
+      }
+    </style>
+  </head>
+  <body class="bg-light">
+    <div class="container-fluid py-4">
+      <!-- Navigation Tabs -->
+      <ul class="nav nav-tabs mb-4" id="managementTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link active"
+            id="shops-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#shops"
+            type="button"
+            role="tab"
+          >
+            <i class="bi bi-shop"></i> Location Management
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link"
+            id="fleet-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#fleet"
+            type="button"
+            role="tab"
+          >
+            <i class="bi bi-truck"></i> Fleet Management
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link"
+            id="orders-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#orders"
+            type="button"
+            role="tab"
+          >
+            <i class="bi bi-cart"></i> Order Management
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link"
+            id="constraints-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#constraints"
+            type="button"
+            role="tab"
+          >
+            <i class="bi bi-sliders"></i> Constraint Management
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link"
+            id="optimization-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#optimization"
+            type="button"
+            role="tab"
+          >
+            <i class="bi bi-gear"></i> Optimization Management
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button
+            class="nav-link"
+            id="visualization-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#visualization"
+            type="button"
+            role="tab"
+          >
+            <i class="bi bi-map"></i> Visualization
+          </button>
+        </li>
+      </ul>
+
+      <!-- Tab Content -->
+      <div
+        class="tab-content"
+        id="managementTabsContent"
+        style="min-height: 500px"
+      >
+        <!-- ==================== SHOPS TAB ==================== -->
+        <div class="tab-pane fade show active" id="shops" role="tabpanel">
+          <!-- Filters -->
+          <div class="row mb-4">
+            <div class="col-12">
+              <div class="card filter-card p-3">
+                <div class="row g-3">
+                  <div class="col-md-3">
+                    <input
+                      type="text"
+                      id="searchInput"
+                      class="form-control"
+                      placeholder="Search by code or location..."
+                    />
+                  </div>
+                  <div class="col-md-3">
+                    <select id="brandFilter" class="form-select">
+                      <option value="">All Brands</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <select id="districtFilter" class="form-select">
+                      <option value="">All Districts</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <button
+                      class="btn btn-primary w-100"
+                      data-bs-toggle="modal"
+                      data-bs-target="#shopModal"
+                    >
+                      <i class="bi bi-plus-lg"></i> Add Shop
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="row">
+            <div class="col-12">
+              <div class="card shadow-sm">
+                <div class="card-header">
+                  <h5 class="mb-0"><i class="bi bi-shop"></i> Shops</h5>
+                </div>
+                <div class="card-body p-0">
+                  <div class="table-container shop-table-container">
+                    <table
+                      class="table table-hover align-middle mb-0"
+                      id="shopsTable"
+                    >
+                      <thead>
+                        <tr>
+                          <th>Code</th>
+                          <th>Location</th>
+                          <th>Address</th>
+                          <th>Brand</th>
+                          <th>District</th>
+                          <th>Coords</th>
+                          <th>Status</th>
+                          <th width="100">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                  <div id="noData" class="text-center text-muted py-5 d-none">
+                    <i class="bi bi-inbox display-1"></i>
+                    <p class="mt-3">No shops found</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==================== DEPOTS SECTION (within Shop Management) ==================== -->
+          <!-- Depot Filters -->
+          <div class="row mt-5 mb-4">
+            <div class="col-12">
+              <div class="card filter-card p-3">
+                <div class="row g-3 align-items-center">
+                  <div class="col-md-4">
+                    <input
+                      type="text"
+                      id="depotSearchInput"
+                      class="form-control"
+                      placeholder="Search by code or location..."
+                    />
+                  </div>
+                  <div class="col-md-4">
+                    <select id="depotDistrictFilter" class="form-select">
+                      <option value="">All Districts</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <button
+                      class="btn btn-secondary w-100"
+                      data-bs-toggle="modal"
+                      data-bs-target="#depotModal"
+                    >
+                      <i class="bi bi-plus-lg"></i> Add Depot
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Depot Table -->
+          <div class="row">
+            <div class="col-12">
+              <div class="card shadow-sm">
+                <div class="card-header">
+                  <h5 class="mb-0"><i class="bi bi-building"></i> Depots</h5>
+                </div>
+                <div class="card-body p-0">
+                  <div class="table-container">
+                    <table
+                      class="table table-hover align-middle mb-0"
+                      id="depotsTable"
+                    >
+                      <thead>
+                        <tr>
+                          <th>Code</th>
+                          <th>Location</th>
+                          <th>Address</th>
+                          <th>District</th>
+                          <th>Coords</th>
+                          <th>Status</th>
+                          <th width="100">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                  <div
+                    id="noDepotData"
+                    class="text-center text-muted py-5 d-none"
+                  >
+                    <i class="bi bi-inbox display-1"></i>
+                    <p class="mt-3">No depots found</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== FLEET TAB ==================== -->
+        <div class="tab-pane fade" id="fleet" role="tabpanel">
+          <!-- Fleet Filters + Buttons -->
+          <div class="row mb-4">
+            <div class="col-12">
+              <div class="card filter-card p-3">
+                <div class="row g-3 align-items-center">
+                  <div class="col-md-4">
+                    <input
+                      type="text"
+                      id="fleetSearchInput"
+                      class="form-control"
+                      placeholder="Search fleet name or code..."
+                    />
+                  </div>
+                  <div class="col-md-4">
+                    <input
+                      type="text"
+                      id="vehicleSearchInput"
+                      class="form-control"
+                      placeholder="Search vehicles..."
+                    />
+                  </div>
+                  <div class="col-md-4 d-flex gap-2">
+                    <!-- ADD FLEET -->
+                    <button
+                      class="btn btn-primary w-100"
+                      data-bs-toggle="modal"
+                      data-bs-target="#fleetModal"
+                    >
+                      Add Fleet
+                    </button>
+                    <!-- ADD VEHICLE -->
+                    <button
+                      class="btn btn-secondary w-100"
+                      data-bs-toggle="modal"
+                      data-bs-target="#vehicleModal"
+                    >
+                      Add Vehicle
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fleets Table -->
+          <div class="row mb-3">
+            <div class="col-12">
+              <div class="card shadow-sm">
+                <div class="card-body p-0">
+                  <div
+                    class="table-container"
+                    style="max-height: 400px; overflow-y: auto"
+                  >
+                    <table
+                      class="table table-hover align-middle mb-0"
+                      id="fleetsTable"
+                    >
+                      <thead>
+                        <tr>
+                          <th>Fleet ID</th>
+                          <th>Name</th>
+                          <th>Type</th>
+                          <th>Region</th>
+                          <th>Manager</th>
+                          <th>Status</th>
+                          <th width="120">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                  <div id="noFleets" class="text-center text-muted py-5 d-none">
+                    <i class="bi bi-inbox display-1"></i>
+                    <p class="mt-3">No fleets found</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Vehicle Filters -->
+          <div class="row mb-3">
+            <div class="col-12">
+              <div class="card filter-card p-3">
+                <div class="row g-3 align-items-center">
+                  <div class="col-md-4">
+                    <select id="vehicleFleetFilter" class="form-select">
+                      <option value="">All Fleets</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <select id="vehicleStatusFilter" class="form-select">
+                      <option value="">All Status</option>
+                      <option value="available">Available</option>
+                      <option value="unavailable">Unavailable</option>
+                      <option value="maintenance">Maintenance</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Vehicles Table -->
+          <div class="row">
+            <div class="col-12">
+              <div class="card shadow-sm">
+                <div class="card-body p-0">
+                  <div
+                    class="table-container"
+                    style="max-height: 400px; overflow-y: auto"
+                  >
+                    <table
+                      class="table table-hover align-middle mb-0"
+                      id="vehiclesTable"
+                    >
+                      <thead>
+                        <tr>
+                          <th>Vehicle ID</th>
+                          <th>Name</th>
+                          <th>Type</th>
+                          <th>Location</th>
+                          <th>Status</th>
+                          <th width="120">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                  <div
+                    id="noVehicles"
+                    class="text-center text-muted py-5 d-none"
+                  >
+                    <i class="bi bi-inbox display-1"></i>
+                    <p class="mt-3">No vehicles found</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== ORDERS TAB ==================== -->
+        <div class="tab-pane fade" id="orders" role="tabpanel">
+          <!-- Order Filters + Buttons -->
+          <div class="row mb-4">
+            <div class="col-12">
+              <div class="card filter-card p-3">
+                <div class="row g-3 align-items-center">
+                  <div class="col-md-3">
+                    <input
+                      type="text"
+                      id="orderSearchInput"
+                      class="form-control"
+                      placeholder="Search order ID or shop code..."
+                    />
+                  </div>
+                  <div class="col-md-2">
+                    <select id="orderStatusFilter" class="form-select">
+                      <option value="">All Status</option>
+                      <option value="pending">Pending</option>
+                      <option value="planed">Planed</option>
+                      <option value="active">Active</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  </div>
+                  <div class="col-md-2">
+                    <input
+                      type="date"
+                      id="dateFromFilter"
+                      class="form-control"
+                    />
+                  </div>
+                  <div class="col-md-2">
+                    <input type="date" id="dateToFilter" class="form-control" />
+                  </div>
+                  <div class="col-md-3 d-flex gap-2">
+                    <button
+                      class="btn btn-primary"
+                      data-bs-toggle="modal"
+                      data-bs-target="#orderModal"
+                    >
+                      Add Order
+                    </button>
+                    <button
+                      class="btn btn-success"
+                      onclick="document.getElementById('excelUpload').click()"
+                    >
+                      Upload
+                    </button>
+                    <button
+                      id="exportOrdersBtn"
+                      class="btn btn-warning"
+                      disabled
+                    >
+                      <i class="bi bi-box-arrow-right"></i> Export
+                    </button>
+                    <input
+                      type="file"
+                      id="excelUpload"
+                      accept=".xlsx,.xls,.csv"
+                      class="d-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Orders Table -->
+          <div class="row">
+            <div class="col-12">
+              <div class="card shadow-sm">
+                <div class="card-body p-0">
+                  <div class="table-container">
+                    <table
+                      class="table table-hover align-middle mb-0"
+                      id="ordersTable"
+                    >
+                      <thead>
+                        <tr>
+                          <th width="40">
+                            <input
+                              type="checkbox"
+                              class="form-check-input"
+                              id="selectAllOrders"
+                            />
+                          </th>
+                          <th>Order ID</th>
+                          <th>Shop Code</th>
+                          <th>Location</th>
+                          <th>Address</th>
+                          <th>PO Value</th>
+                          <th>Volume</th>
+                          <th>PO Date</th>
+                          <th>Status</th>
+                          <th width="120">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                  <div id="noOrders" class="text-center text-muted py-5 d-none">
+                    <i class="bi bi-inbox display-1"></i>
+                    <p class="mt-3">No orders found</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== CONSTRAINTS TAB ==================== -->
+        <div class="tab-pane fade" id="constraints" role="tabpanel">
+          <div class="card">
+            <div class="card-body">
+              <!-- Sub-tabs -->
+              <ul
+                class="nav nav-pills mb-3"
+                id="constraintSubTabs"
+                role="tablist"
+              >
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link active"
+                    id="vehicle-constraint-tab"
+                    data-bs-toggle="pill"
+                    data-bs-target="#vehicle-constraint"
+                    type="button"
+                    role="tab"
+                  >
+                    Vehicle Constraint
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link"
+                    id="order-constraint-tab"
+                    data-bs-toggle="pill"
+                    data-bs-target="#order-constraint"
+                    type="button"
+                    role="tab"
+                  >
+                    Order Constraint
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link"
+                    id="geo-constraint-tab"
+                    data-bs-toggle="pill"
+                    data-bs-target="#geo-constraint"
+                    type="button"
+                    role="tab"
+                  >
+                    Geo Constraint
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button
+                    class="nav-link"
+                    id="routes-constraint-tab"
+                    data-bs-toggle="pill"
+                    data-bs-target="#routes-constraint"
+                    type="button"
+                    role="tab"
+                  >
+                    Pre-defined Routes
+                  </button>
+                </li>
+              </ul>
+
+              <div class="tab-content">
+                <!-- VEHICLE CONSTRAINT -->
+                <div
+                  class="tab-pane fade show active"
+                  id="vehicle-constraint"
+                  role="tabpanel"
+                >
+                  <div class="row mb-3">
+                    <div class="col-12">
+                      <div class="card shadow-sm">
+                        <div class="card-body p-0">
+                          <div
+                            class="table-container"
+                            style="max-height: 450px; overflow-y: auto"
+                          >
+                            <table
+                              class="table table-hover align-middle mb-0"
+                              id="vehicleConstraintsTable"
+                            >
+                              <thead>
+                                <tr>
+                                  <th>Vehicle</th>
+                                  <th>Fleet</th>
+                                  <th>Type</th>
+                                  <th>Payload</th>
+                                  <th>Volume</th>
+                                  <th>Days</th>
+                                  <th>Time Window</th>
+                                  <th>Max Distance</th>
+                                  <th>Max Visits</th>
+                                  <th width="120">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody></tbody>
+                            </table>
+                          </div>
+                          <div
+                            id="noVehicleConstraints"
+                            class="text-center text-muted py-5 d-none"
+                          >
+                            <i class="bi bi-inbox display-1"></i>
+                            <p class="mt-3">No vehicle constraints found</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ORDER CONSTRAINT -->
+                <div
+                  class="tab-pane fade"
+                  id="order-constraint"
+                  role="tabpanel"
+                >
+                  <div class="card">
+                    <div
+                      class="card-header d-flex justify-content-between align-items-center"
+                    >
+                      <h5 class="card-title mb-0">Processed Orders</h5>
+                      <div>
+                        <button
+                          id="clearProcessedOrdersBtn"
+                          class="btn btn-sm btn-outline-danger me-2"
+                          title="Clear all exported orders"
+                        >
+                          <i class="bi bi-trash"></i> Clear All
+                        </button>
+                        <button
+                          id="addGroupBtn"
+                          class="btn btn-sm btn-outline-primary"
+                          disabled
+                        >
+                          <i class="bi bi-plus-lg"></i> Add Group
+                        </button>
+                      </div>
+                    </div>
+                    <div class="card-body p-0">
+                      <div class="table-container">
+                        <table
+                          class="table table-hover align-middle"
+                          id="processedOrdersTable"
+                        >
+                          <thead class="table-light">
+                            <tr>
+                              <th>
+                                <input
+                                  type="checkbox"
+                                  id="selectAllInConstraint"
+                                />
+                              </th>
+                              <th>Order ID</th>
+                              <th>Shop Code</th>
+                              <th>Location</th>
+                              <th>Address</th>
+                              <th>PO Value</th>
+                              <th>Volume</th>
+                              <th>PO Date</th>
+                              <th>Time Window</th>
+                              <th>Priority</th>
+                              <th>Group</th>
+                              <th width="60">Remove</th>
+                            </tr>
+                          </thead>
+                          <tbody></tbody>
+                        </table>
+                      </div>
+
+                      <!-- GROUPS LIST -->
+                      <div
+                        id="constraintOrderGroups"
+                        class="mt-4"
+                        style="display: none"
+                      >
+                        <h6>Created Groups</h6>
+                        <div
+                          id="constraintGroupsList"
+                          class="border rounded p-3 bg-light"
+                        ></div>
+                      </div>
+
+                      <p
+                        id="noProcessedOrders"
+                        class="text-center text-muted py-5"
+                      >
+                        No orders processed. Export from Order Management.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ==================== GEO CONSTRAINT TAB ==================== -->
+                <div class="tab-pane fade" id="geo-constraint" role="tabpanel">
+                  <div class="card mt-4">
+                    <div
+                      class="card-header d-flex justify-content-between align-items-center"
+                    >
+                      <h5 class="mb-0">Geo Constraints</h5>
+                      <button
+                        class="btn btn-primary btn-sm"
+                        data-bs-toggle="modal"
+                        data-bs-target="#geoConstraintModal"
+                      >
+                        Add Constraint
+                      </button>
+                    </div>
+                    <div class="card-body">
+                      <div
+                        id="geoConstraintsList"
+                        style="max-height: 400px; overflow-y: auto"
+                      >
+                        <!-- Filled by JS -->
+                      </div>
+                      <div
+                        id="noGeoConstraints"
+                        class="text-muted text-center py-3"
+                        style="display: none"
+                      >
+                        No geo constraints defined.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- ==================== PRE-DEFINED ROUTES TAB ==================== -->
+                <div
+                  class="tab-pane fade"
+                  id="routes-constraint"
+                  role="tabpanel"
+                >
+                  <div class="card mt-4">
+                    <div
+                      class="card-header d-flex justify-content-between align-items-center"
+                    >
+                      <h5 class="mb-0">Pre-defined Routes</h5>
+                      <button
+                        class="btn btn-primary btn-sm"
+                        onclick="openPredefinedRouteModal()"
+                      >
+                        <i class="bi bi-plus-lg"></i> Add Route
+                      </button>
+                    </div>
+                    <div class="card-body">
+                      <div
+                        id="predefinedRoutesList"
+                        style="max-height: 400px; overflow-y: auto"
+                      >
+                        <!-- Filled by JS -->
+                      </div>
+                      <div
+                        id="noPredefinedRoutes"
+                        class="text-muted text-center py-3"
+                        style="display: none"
+                      >
+                        No pre-defined routes.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== OPTIMIZATION TAB ==================== -->
+        <div class="tab-pane fade" id="optimization" role="tabpanel">
+          <div class="row">
+            <!-- Left Panel: Vehicle Selection -->
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="mb-0">Vehicle Selection</h5>
+                </div>
+                <div class="card-body">
+                  <div class="mb-3">
+                    <input
+                      type="text"
+                      id="optimizationVehicleSearch"
+                      class="form-control"
+                      placeholder="Search vehicles..."
+                    />
+                  </div>
+                  <div style="max-height: 400px; overflow-y: auto">
+                    <table
+                      class="table table-sm table-hover"
+                      id="optimizationVehiclesTable"
+                    >
+                      <thead class="table-light">
+                        <tr>
+                          <th width="40">
+                            <input type="checkbox" id="selectAllVehicles" />
+                          </th>
+                          <th>Vehicle</th>
+                          <th>Type</th>
+                          <th>Pre-defined Route</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                  <div
+                    id="noVehiclesForOptimization"
+                    class="text-center text-muted py-3"
+                    style="display: none"
+                  >
+                    No vehicles available
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Panel: Order List -->
+            <div class="col-md-6">
+              <div class="card">
+                <div
+                  class="card-header d-flex justify-content-between align-items-center"
+                >
+                  <h5 class="mb-0">Orders for Optimization</h5>
+                  <div>
+                    <button
+                      class="btn btn-sm btn-outline-danger me-2"
+                      id="clearOptimizationOrders"
+                      title="Clear all orders for optimization"
+                    >
+                      <i class="bi bi-trash"></i> Clear All
+                    </button>
+                    <button
+                      class="btn btn-sm btn-outline-primary me-2"
+                      id="refreshOptimizationOrders"
+                      title="Sync orders from Constraint Management"
+                    >
+                      <i class="bi bi-arrow-clockwise"></i> Refresh Orders
+                    </button>
+                    <span class="badge bg-primary" id="optimizationOrderCount"
+                      >0 orders</span
+                    >
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div style="max-height: 400px; overflow-y: auto">
+                    <table
+                      class="table table-sm table-hover"
+                      id="optimizationOrdersTable"
+                    >
+                      <thead class="table-light">
+                        <tr>
+                          <th>Order ID</th>
+                          <th>Shop</th>
+                          <th>Location</th>
+                          <th>Brand</th>
+                          <th>PO Value</th>
+                          <th>Priority</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                  <div
+                    id="noOrdersForOptimization"
+                    class="text-center text-muted py-3"
+                  >
+                    No orders available. Export orders from Order Management.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Optimization Controls -->
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                      <label class="form-label">Optimization Date</label>
+                      <input
+                        type="date"
+                        id="optimizationDate"
+                        class="form-control"
+                      />
+                    </div>
+
+                    <div class="col-md-3">
+                      <label class="form-label">Depot</label>
+                      <select id="optimizationDepotSelect" class="form-select">
+                        <option value="">Select Depot</option>
+                      </select>
+                    </div>
+                    <div class="col-md-3 text-end">
+                      <button
+                        id="runOptimizationBtn"
+                        class="btn btn-success btn-lg"
+                        disabled
+                      >
+                        <i class="bi bi-play-fill"></i> Run Optimization
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- End of Optimization Tab -->
+
+        <!-- ==================== VISUALIZATION TAB ==================== -->
+        <div class="tab-pane fade" id="visualization" role="tabpanel">
+          <!-- Top Row: Optimization Jobs -->
+          <div class="row mb-3">
+            <div class="col-12">
+              <div class="card">
+                <div
+                  class="card-header d-flex justify-content-between align-items-center"
+                >
+                  <h5 class="mb-0">Optimization Jobs</h5>
+                  <button
+                    class="btn btn-sm btn-outline-primary"
+                    id="refreshJobsBtn"
+                  >
+                    <i class="bi bi-arrow-clockwise"></i>
+                  </button>
+                </div>
+                <div class="card-body p-0">
+                  <div class="p-3 pb-0">
+                    <div class="row g-2 mb-3">
+                      <div class="col-md-4">
+                        <input
+                          type="text"
+                          id="jobSearchInput"
+                          class="form-control form-control-sm"
+                          placeholder="Search jobs..."
+                        />
+                      </div>
+                      <div class="col-md-4">
+                        <input
+                          type="date"
+                          id="jobDateFrom"
+                          class="form-control form-control-sm"
+                          placeholder="From Date"
+                        />
+                      </div>
+                      <div class="col-md-4">
+                        <input
+                          type="date"
+                          id="jobDateTo"
+                          class="form-control form-control-sm"
+                          placeholder="To Date"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div style="max-height: 250px; overflow-y: auto">
+                    <div id="jobsList" class="list-group list-group-flush">
+                      <!-- Jobs populated by JS -->
+                    </div>
+                  </div>
+                  <div
+                    id="noJobs"
+                    class="text-center text-muted py-5"
+                    style="display: none"
+                  >
+                    <i class="bi bi-inbox display-4"></i>
+                    <p class="mt-3">No jobs found</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Job Details (shown after job selection) -->
+          <div class="row mb-3" id="jobDetailsCard" style="display: none">
+            <div class="col-12">
+              <div class="card">
+                <div
+                  class="card-header d-flex justify-content-between align-items-center"
+                >
+                  <h5 class="mb-0" id="jobDetailsTitle">Job Details</h5>
+                  <button
+                    id="completeDeliveryBtn"
+                    class="btn btn-success btn-sm"
+                    style="display: none"
+                    title="Mark this job as completed"
+                  >
+                    <i class="bi bi-check-circle"></i> Complete Delivery
+                  </button>
+                </div>
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col-md-4">
+                      <small class="text-muted">Date</small>
+                      <p id="jobDay" class="mb-2">-</p>
+                    </div>
+                    <div class="col-md-4">
+                      <small class="text-muted">Status</small>
+                      <p id="jobStatus" class="mb-2">-</p>
+                    </div>
+                    <div class="col-md-4">
+                      <small class="text-muted">Routes</small>
+                      <p id="jobRouteCount" class="mb-2">-</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Row: Vehicle Routes (left) and Route Details (right) -->
+          <div class="row">
+            <!-- Left: Vehicle Routes List -->
+            <div class="col-md-4">
+              <div class="card" id="routesCard" style="display: none">
+                <div
+                  class="card-header d-flex justify-content-between align-items-center"
+                >
+                  <h6 class="mb-0">Vehicle Routes</h6>
+                  <button
+                    class="btn btn-sm btn-primary"
+                    id="printAllRoutesBtn"
+                    title="Print All Routes"
+                  >
+                    <i class="bi bi-printer"></i> Print All
+                  </button>
+                </div>
+                <div class="card-body p-0">
+                  <div style="max-height: 600px; overflow-y: auto">
+                    <div class="list-group list-group-flush" id="routesList">
+                      <!-- Routes populated by JS -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Route Stops Table and Map -->
+            <div class="col-md-8">
+              <!-- Route Details: Stops Table -->
+              <div class="card mb-3" id="stopsCard" style="display: none">
+                <div class="card-header">
+                  <h6 class="mb-0" id="stopsCardTitle">Route Stops</h6>
+                </div>
+                <div class="card-body p-0">
+                  <div style="max-height: 400px; overflow-y: auto">
+                    <table
+                      class="table table-sm table-hover mb-0"
+                      id="stopsTable"
+                    >
+                      <thead class="table-light">
+                        <tr>
+                          <th width="60">Seq</th>
+                          <th>Shop Code</th>
+                          <th>Order ID</th>
+                          <th>Location</th>
+                          <th>Address</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Map Display -->
+              <div class="card" id="mapCard" style="display: none">
+                <div class="card-header">
+                  <h6 class="mb-0">Route Map</h6>
+                </div>
+                <div class="card-body p-0">
+                  <div id="mapContainer" style="min-height: 500px">
+                    <!-- Folium map iframe will be injected here -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Placeholder -->
+              <div class="card" id="visualizationPlaceholder">
+                <div class="card-body text-center text-muted py-5">
+                  <i class="bi bi-map display-1"></i>
+                  <p class="mt-3">Select a job to view routes and maps</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- End of Visualization Tab -->
+      </div>
+      <!-- End of Tab Content -->
+    </div>
+    <!-- End of Container -->
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- Shop Modal -->
+    <div class="modal fade" id="shopModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <form id="shopForm">
+            <div class="modal-header">
+              <h5 class="modal-title" id="modalTitle">Add Shop</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="shopId" />
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >Shop Code <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="shopCode"
+                    required
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >Location <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="location"
+                    required
+                  />
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Address</label>
+                  <textarea
+                    class="form-control"
+                    id="address"
+                    rows="2"
+                  ></textarea>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >Brand <span class="text-danger">*</span></label
+                  >
+                  <input type="text" class="form-control" id="brand" required />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >District <span class="text-danger">*</span></label
+                  >
+                  <select class="form-select" id="district" required>
+                    <option value="">Select District</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >Latitude <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="number"
+                    step="any"
+                    class="form-control"
+                    id="latitude"
+                    required
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >Longitude <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="number"
+                    step="any"
+                    class="form-control"
+                    id="longitude"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary">Save Shop</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Depot Modal -->
+    <div class="modal fade" id="depotModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <form id="depotForm">
+            <div class="modal-header">
+              <h5 class="modal-title" id="depotModalTitle">Add Depot</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="depotId" />
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >Depot Code <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="depotCode"
+                    required
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >Location <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="depotLocation"
+                    required
+                  />
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Address</label>
+                  <textarea
+                    class="form-control"
+                    id="depotAddress"
+                    rows="2"
+                  ></textarea>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >District <span class="text-danger">*</span></label
+                  >
+                  <select class="form-select" id="depotDistrict" required>
+                    <option value="">Select District</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >Latitude <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="number"
+                    step="any"
+                    class="form-control"
+                    id="depotLatitude"
+                    required
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >Longitude <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="number"
+                    step="any"
+                    class="form-control"
+                    id="depotLongitude"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary">Save Depot</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fleet Modal -->
+    <div class="modal fade" id="fleetModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <form id="fleetForm">
+            <div class="modal-header">
+              <h5 class="modal-title" id="fleetModalTitle">Add Fleet</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="fleetId" />
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >Fleet Name <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="fleetName"
+                    required
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >Type <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="fleetType"
+                    placeholder="e.g., truck, van"
+                    required
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >Region <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="fleetRegion"
+                    required
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >Manager <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="fleetManager"
+                    required
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >Status <span class="text-danger">*</span></label
+                  >
+                  <select id="fleetStatus" class="form-select" required>
+                    <option value="active">active</option>
+                    <option value="inactive">inactive</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary">Save Fleet</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vehicle Modal -->
+    <div class="modal fade" id="vehicleModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <form id="vehicleForm">
+            <div class="modal-header">
+              <h5 class="modal-title" id="vehicleModalTitle">Add Vehicle</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="vehicleId" />
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >Fleet <span class="text-danger">*</span></label
+                  >
+                  <select
+                    id="vehicleFleetSelect"
+                    class="form-select"
+                    required
+                  ></select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >Vehicle Name <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="vehicleName"
+                    required
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >Type <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="vehicleType"
+                    placeholder="e.g., truck, van"
+                    required
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Location</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="vehicleLocation"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Status</label>
+                  <select id="vehicleStatus" class="form-select">
+                    <option value="available">available</option>
+                    <option value="unavailable">unavailable</option>
+                    <option value="maintenance">maintenance</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary">
+                Save Vehicle
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Order Modal -->
+    <div class="modal fade" id="orderModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <form id="orderForm">
+            <div class="modal-header">
+              <h5 class="modal-title" id="orderModalTitle">Add Order</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="orderId" />
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">Order ID (optional)</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="orderCode"
+                    placeholder="Leave empty to auto‑generate"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >Shop Code <span class="text-danger">*</span></label
+                  >
+                  <div class="position-relative">
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="shopSelect"
+                      list="shopSearchList"
+                      placeholder="Search by code, location or address"
+                      autocomplete="off"
+                      required
+                    />
+                    <datalist id="shopSearchList"></datalist>
+                  </div>
+                  <div id="shopDetails" class="form-text mt-1"></div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">PO Value</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    class="form-control"
+                    id="poValue"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Volume</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    class="form-control"
+                    id="volume"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label"
+                    >PO Date <span class="text-danger">*</span></label
+                  >
+                  <input
+                    type="date"
+                    class="form-control"
+                    id="poDate"
+                    required
+                  />
+                </div>
+                <!-- Status Field - VISIBLE ONLY IN EDIT MODE -->
+                <div class="col-md-6" id="statusField" style="display: none">
+                  <label class="form-label">Status</label>
+                  <select id="status" class="form-select">
+                    <option value="pending">Pending</option>
+                    <option value="planed">Planed</option>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary">Save Order</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Print Options Modal -->
+    <div class="modal fade" id="printOptionsModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title">
+              <i class="bi bi-printer"></i> Print Route
+            </h5>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body text-center py-4">
+            <p class="mb-4">Choose how you want to print this route:</p>
+            <div class="d-grid gap-3">
+              <button
+                type="button"
+                class="btn btn-lg btn-primary"
+                id="printToDeviceBtn"
+              >
+                <i class="bi bi-printer-fill me-2"></i>
+                Print to Printer
+              </button>
+              <button
+                type="button"
+                class="btn btn-lg btn-outline-primary"
+                id="saveToPdfBtn"
+              >
+                <i class="bi bi-file-pdf-fill me-2"></i>
+                Save as PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container"></div>
+
+    <!-- Vehicle Constraint Modal -->
+    <div class="modal fade" id="vehicleConstraintModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <form id="vehicleConstraintForm">
+            <div class="modal-header">
+              <h5 class="modal-title" id="vehicleConstraintModalTitle">
+                Edit Vehicle Constraint
+              </h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="constraintVehicleId" />
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label">Days</label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    class="form-control"
+                    id="constraintDays"
+                  />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Payload</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    class="form-control"
+                    id="constraintPayload"
+                  />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Volume</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    class="form-control"
+                    id="constraintVolume"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Time Window</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="constraintTimeWindow"
+                    placeholder="e.g., 08:00-18:00"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Max Distance (km)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    class="form-control"
+                    id="constraintMaxDistance"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Max Visits</label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    class="form-control"
+                    id="constraintMaxVisits"
+                  />
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary">
+                Save Constraint
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIME WINDOW MODAL -->
+    <div class="modal fade" id="timeWindowModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form id="timeWindowForm">
+            <div class="modal-header">
+              <h5 class="modal-title">Set Time Window</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="timeWindowOrderId" />
+              <div class="row g-3">
+                <div class="col-6">
+                  <label class="form-label">Start Time</label>
+                  <select class="form-select" id="startTimeSelect"></select>
+                </div>
+                <div class="col-6">
+                  <label class="form-label">End Time</label>
+                  <select class="form-select" id="endTimeSelect"></select>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary">Apply</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <!-- GROUP MODAL – ONLY NAME -->
+    <div class="modal fade" id="constraintGroupModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form id="constraintGroupForm">
+            <div class="modal-header">
+              <h5 class="modal-title">Create Group</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="groupAppendOrderIds" />
+              <div class="mb-3">
+                <label class="form-label"
+                  >Group Name <span class="text-danger">*</span></label
+                >
+                <input
+                  type="text"
+                  class="form-control"
+                  id="groupNameInput"
+                  required
+                />
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary">
+                Create Group
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== GEO CONSTRAINT MODAL ==================== -->
+    <div class="modal fade" id="geoConstraintModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form id="geoConstraintForm">
+            <div class="modal-header">
+              <h5 class="modal-title" id="geoModalTitle">Add Geo Constraint</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="geoConstraintId" />
+
+              <div class="mb-3">
+                <label class="form-label"
+                  >Start Shop <span class="text-danger">*</span></label
+                >
+                <input
+                  type="text"
+                  class="form-control"
+                  id="startShopInput"
+                  list="startShopList"
+                  placeholder="Search by code, location or address"
+                  autocomplete="off"
+                  required
+                />
+                <datalist id="startShopList"></datalist>
+                <div id="startShopDetails" class="form-text mt-1"></div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label"
+                  >End Shop <span class="text-danger">*</span></label
+                >
+                <input
+                  type="text"
+                  class="form-control"
+                  id="endShopInput"
+                  list="endShopList"
+                  placeholder="Search by code, location or address"
+                  autocomplete="off"
+                  required
+                />
+                <datalist id="endShopList"></datalist>
+                <div id="endShopDetails" class="form-text mt-1"></div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Vehicle (Optional)</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="vehicleSelect"
+                  list="vehicleList"
+                  placeholder="Search by registration number or type"
+                  autocomplete="off"
+                />
+                <datalist id="vehicleList"></datalist>
+                <div id="vehicleDetails" class="form-text mt-1"></div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== PRE-DEFINED ROUTE MODAL ==================== -->
+    <div class="modal fade" id="predefinedRouteModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <form id="predefinedRouteForm">
+            <div class="modal-header">
+              <h5 class="modal-title" id="predefinedRouteModalTitle">
+                Add Route
+              </h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+              ></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="predefinedRouteId" />
+
+              <div class="mb-3">
+                <label class="form-label"
+                  >Route Name <span class="text-danger">*</span></label
+                >
+                <input
+                  type="text"
+                  class="form-control"
+                  id="routeNameInput"
+                  required
+                />
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Add Shop</label>
+                <div class="input-group">
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="routeShopSearch"
+                    list="routeShopList"
+                    placeholder="Search by code, location or address"
+                    autocomplete="off"
+                  />
+                  <button
+                    class="btn btn-outline-secondary"
+                    type="button"
+                    id="addShopToRouteBtn"
+                  >
+                    <i class="bi bi-plus"></i>
+                  </button>
+                </div>
+                <datalist id="routeShopList"></datalist>
+                <div id="routeShopDetails" class="form-text mt-1"></div>
+              </div>
+
+              <div
+                class="border rounded p-3 bg-light"
+                style="min-height: 120px"
+              >
+                <h6>Selected Shops (drag to reorder)</h6>
+                <ol
+                  id="routeShopListContainer"
+                  class="list-group list-group-numbered"
+                ></ol>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary">Save Route</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Debug Script -->
+    <script>
+      console.log("=== DEBUG: Checking Optimization Tab ===");
+      document.addEventListener("DOMContentLoaded", () => {
+        const optTab = document.getElementById("optimization");
+        const optTabBtn = document.getElementById("optimization-tab");
+        console.log("Optimization tab pane element:", optTab);
+        console.log("Optimization tab button element:", optTabBtn);
+
+        if (optTabBtn) {
+          optTabBtn.addEventListener("click", () => {
+            console.log("Optimization tab button CLICKED!");
+            setTimeout(() => {
+              console.log("Tab classes after click:", optTab.className);
+              console.log(
+                "Tab display style:",
+                window.getComputedStyle(optTab).display
+              );
+              console.log(
+                "Tab visibility:",
+                window.getComputedStyle(optTab).visibility
+              );
+            }, 500);
+          });
+        }
+      });
+    </script>
+
+    <script src="shop_crud.js"></script>
+    <script src="depot_crud.js"></script>
+    <script src="fleet_crud.js"></script>
+    <script src="order_crud.js"></script>
+    <script src="constraint_crud.js"></script>
+    <script src="geo_constraint_crud.js"></script>
+    <script src="predefined_route_crud.js"></script>
+    <script src="optimization.js"></script>
+    <script src="visualization.js"></script>
+  </body>
+</html>
