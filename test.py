@@ -1,10 +1,8 @@
-from src.core.matrix_manager import DistanceMatrixManager
+from src.matrix.manager import DistanceMatrixManager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base, scoped_session
-from config.settings import Settings
-from src.database.database import SessionLocal
-
-setting = Settings()
+from src.infrastructure import config
+from src.infrastructure.database.session import SessionLocal
 
 
 # engine = create_engine(setting.database_url, connect_args = {
@@ -101,9 +99,9 @@ if __name__ == "__main__":
 # import sys
 # import logging
 # from datetime import datetime
-# from src.core.matrix_manager import DistanceMatrixManager
-# from src.database.database import SessionLocal
-# from config.settings import Settings
+# from src.matrix.manager import DistanceMatrixManager
+# from src.infrastructure.database.session import SessionLocal
+# from src.infrastructure import config
 
 # # Configure logging
 # logging.basicConfig(

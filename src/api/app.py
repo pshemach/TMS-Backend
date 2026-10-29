@@ -1,0 +1,50 @@
+"""FastAPI application factory and router registration."""
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+from src.api.routes.depots.endpoints import router as depots_router
+from src.api.routes.fleets.endpoints import router as fleets_router
+from src.api.routes.geo_constraints.endpoints import router as geo_constraints_router
+from src.api.routes.jobs.endpoints import router as jobs_router
+from src.api.routes.optimization.endpoints import router as optimization_router
+from src.api.routes.order_groups.endpoints import router as order_groups_router
+from src.api.routes.orders.endpoints import router as orders_router
+from src.api.routes.predefined_routes.endpoints import router as predefined_routes_router
+from src.api.routes.shops.endpoints import router as shops_router
+from src.api.routes.vehicle_constraints.endpoints import router as vehicle_constraints_router
+from src.api.routes.vehicles.endpoints import router as vehicles_router
+from src.infrastructure.config import UI_DIR, ensure_directories, validate
+from src.infrastructure.database import models
+from src.infrastructure.database.session import engine
+
+validate()
+ensure_directories()
+
+app = FastAPI(description=f"{'=' * 10} TMS BACKEND API {'=' * 10}")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+models.Base.metadata.create_all(bind=engine)
+
+app.include_router(shops_router)
+app.include_router(depots_router)
+app.include_router(fleets_router)
+app.include_router(vehicles_router)
+app.include_router(vehicle_constraints_router)
+app.include_router(geo_constraints_router)
+app.include_router(predefined_routes_router)
+app.include_router(orders_router)
+app.include_router(order_groups_router)
+app.include_router(optimization_router)
+app.include_router(jobs_router)
+
+# Serve UI last so API routes keep priority. `/` opens index.html.
+app.mount("/", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
