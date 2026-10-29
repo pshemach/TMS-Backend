@@ -87,6 +87,8 @@ OSRM_BASE_URL = os.getenv(
 # Logging / UI
 # ========================================
 
+# Industry default: INFO in normal runs; set LOG_LEVEL=DEBUG only when debugging.
+LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG").upper()
 LOG_DIR = PROJECT_ROOT / "logs"
 UI_DIR = PROJECT_ROOT / "ui"
 

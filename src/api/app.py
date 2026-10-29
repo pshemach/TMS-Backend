@@ -23,6 +23,8 @@ from src.infrastructure import config
 from src.infrastructure.config import UI_DIR, ensure_directories, validate
 from src.infrastructure.database import models
 from src.infrastructure.database.session import engine
+# Configure Loguru sinks (console + file) before request handling starts.
+from src.infrastructure import logging as _logging  # noqa: F401
 
 validate()
 ensure_directories()

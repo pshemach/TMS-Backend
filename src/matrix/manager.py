@@ -3,30 +3,16 @@
 from __future__ import annotations
 
 import json
-import logging
-import os
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
-from from_root import from_root
 from sqlalchemy.orm import Session
 
 from src.infrastructure.database.models import DistanceMatrix, Location, MatrixStatus
+from src.infrastructure.logging import logging
 from src.matrix.osrm import get_osrm_data
-
-LOG_FILE = "matrix.log"
-log_dir = "logs"
-logs_path = os.path.join(from_root(), log_dir, LOG_FILE)
-os.makedirs(log_dir, exist_ok=True)
-
-logging.basicConfig(
-    filename=logs_path,
-    filemode="a",
-    format="[ %(asctime)s ] %(name)s - %(levelname)s - %(message)s",
-    level=logging.DEBUG,
-)
 
 
 class DistanceMatrixManager:
