@@ -12,6 +12,7 @@ from src.infrastructure.exceptions import TMSException
 import sys
 
 def run_optimization_task(db: Session,request: schemas.OptimizeRequest,job_id: Optional[int]=None):
+    job = None
     try:
 
         job = db.query(models.Job).filter(models.Job.id == job_id).first()
@@ -23,7 +24,9 @@ def run_optimization_task(db: Session,request: schemas.OptimizeRequest,job_id: O
         fixed_routes, optimized_routes = orchestrator.optimize_orchestrator()
         
         # Save route data in database
-        all_routes = (fixed_routes + optimized_routes)
+        all_routes = (fixed_routes or []) + (optimized_routes or [])
+        if not all_routes:
+            logging.warning(f"Job {job_id}: solver returned no routes")
         _ = orchestrator._save_job(db, job, all_routes)
         
         # Update planed orders status
@@ -34,6 +37,12 @@ def run_optimization_task(db: Session,request: schemas.OptimizeRequest,job_id: O
             
     except Exception as e:
         logging.error(f"optimization failed: {e}")
+        if job is not None:
+            try:
+                job.status = models.JobStatus.FAILED
+                db.commit()
+            except Exception:
+                db.rollback()
         raise TMSException(e, sys)
 
 
@@ -78,9 +87,10 @@ class Orchestrator:
             if self.free_vehicles and remaining_orders:
                 free_optimized_routes = self._optimize_free_vehicles(orders=remaining_orders, vehicles=self.free_vehicles, depot_id=self.request.depot_id)
                 
-            return predefined_optimized_routes, free_optimized_routes
+            return predefined_optimized_routes, free_optimized_routes or []
         except Exception as e:
             logging.error(f"Orchestration of optimization failed: {e}")
+            return [], []
     
     def _split_vehicles(self):
         try:
@@ -139,19 +149,27 @@ class Orchestrator:
         """vrp for no routes assigned"""
         try:
             data = ORDataModel(db=self.db, vehicles=vehicles, orders=orders, depot_id=depot_id).get_data()
-            routes = VRPSolver().run_ortools_solver(data=data, vehicles=vehicles)
-            
-            return [
-                {
-                    "vehicle": vehicles[i],
-                    "path": routes[i],  # Already contains nodes, arrival_times, total_distance, total_time
-                    "orders": [o for o in orders if o.location_id in routes[i]["nodes"]]
-        }
-                for i in range(len(routes)) if routes[i]["nodes"]
-                ]
+            routes = VRPSolver().run_ortools_solver(data=data, vehicles=vehicles) or {}
+
+            result = []
+            for i, path in routes.items():
+                nodes = path.get("nodes") or []
+                if not nodes:
+                    continue
+                if i >= len(vehicles):
+                    continue
+                result.append(
+                    {
+                        "vehicle": vehicles[i],
+                        "path": path,
+                        "orders": [o for o in orders if o.location_id in nodes],
+                    }
+                )
+            return result
         except Exception as e:
             logging.error(f"Free vehicles orchestration failed: {e}")
-        
+            return []
+
     def _save_job(self, db: Session, job: models.Job, routes_data: Dict):
         """Save routes into a Job with order tracking and proper timing."""       
         try:

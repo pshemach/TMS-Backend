@@ -47,20 +47,20 @@ def _enum_values(enum_cls):
     return [member.value for member in enum_cls]
 
 
-class OrderStatus(enum.Enum):
+class OrderStatus(str, enum.Enum):
     PENDING = "pending"
     PLANED = "planed"
     ACTIVE = "active"
     COMPLETED = "completed"
 
 
-class Priority(enum.Enum):
+class Priority(str, enum.Enum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
 
 
-class JobStatus(enum.Enum):
+class JobStatus(str, enum.Enum):
     RUNNING = "running"
     PLANNED = "planned"
     COMPLETED = "completed"
@@ -287,7 +287,7 @@ class Order(Base, SoftDeleteMixin, TimestampMixin):
     po_date = Column("PoDate", Date, nullable=False)
     status = Column(
         "Status",
-        Enum(OrderStatus),
+        Enum(OrderStatus, values_callable=_enum_values, native_enum=False, length=20),
         nullable=False,
         default=OrderStatus.PENDING,
         index=True,
@@ -296,7 +296,7 @@ class Order(Base, SoftDeleteMixin, TimestampMixin):
     time_window_end = Column("TimeWindowEnd", Time, nullable=True)
     priority = Column(
         "Priority",
-        Enum(Priority),
+        Enum(Priority, values_callable=_enum_values, native_enum=False, length=20),
         nullable=True,
         default=Priority.MEDIUM,
     )
@@ -353,7 +353,7 @@ class Job(Base, SoftDeleteMixin, TimestampMixin):
     day = Column("Day", Date, nullable=False)
     status = Column(
         "Status",
-        Enum(JobStatus),
+        Enum(JobStatus, values_callable=_enum_values, native_enum=False, length=20),
         default=JobStatus.PLANNED,
         nullable=False,
     )

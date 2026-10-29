@@ -28,12 +28,8 @@ from src.infrastructure.database.models import (
 )
 from src.infrastructure.database.session import SessionLocal
 
-PRIORITIES = [Priority.LOW, Priority.MEDIUM, Priority.HIGH]
+PRIORITIES = [ Priority.MEDIUM]
 TIME_WINDOWS = [
-    (time(8, 0), time(12, 0)),
-    (time(9, 0), time(17, 0)),
-    (time(10, 0), time(18, 0)),
-    (time(13, 0), time(20, 0)),
     (None, None),  # no window
 ]
 

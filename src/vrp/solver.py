@@ -1,5 +1,6 @@
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 from src.infrastructure import config
+from src.infrastructure.logging import logging
 from typing import Optional, Union, List, Dict
 from datetime import time
 
@@ -114,8 +115,9 @@ class VRPSolver:
         
         solution = routing.SolveWithParameters(search_params)
         if not solution:
-            return set(), {}
-        
+            logging.warning("OR-Tools found no feasible solution")
+            return {}
+
         return self._extract_solution(manager, routing, solution, data, vehicles)
     
     def _add_time_dimension(self, routing, manager, data, vehicles, transit_idx):
