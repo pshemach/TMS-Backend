@@ -6,9 +6,10 @@ Backend for the Transportation Management System (TMS). It is a FastAPI service 
 
 ## What it does
 
-- CRUD for shops, depots, fleets, vehicles, orders, order groups, and routing constraints
+- CRUD for customers, depots (unified `Location` with `location_type`), fleets, vehicles, orders, order groups, and routing constraints
+- Soft-delete on business entities (`IsDeleted` / `DeletedAt`); DELETE endpoints mark rows deleted
 - Vehicle routing that minimizes distance or time, then stores the result as a job
-- Distance and duration matrix sync for shops marked `to_create` or `to_update`
+- Distance and duration matrix sync for locations marked `to_create` or `to_update`
 - A static operations UI served at `/` from the `ui/` folder
 
 ## Tech stack
@@ -36,8 +37,8 @@ TMS-Backend/
     │   ├── app.py               # FastAPI app, CORS, table create, routers, UI
     │   ├── deps.py
     │   └── routes/              # one package per resource
-    │       ├── shops/
-    │       ├── depots/
+│       ├── customers/
+│       ├── depots/
     │       ├── fleets/
     │       ├── vehicles/
     │       ├── vehicle_constraints/
@@ -84,7 +85,15 @@ Interactive docs:
 | Jobs | `/job` | Job status, vehicle routes, complete, cancel |
 | Matrix | `/matrix` | `GET /stats`, `GET /pending`, `POST /sync` |
 
-`POST /matrix/sync` runs in the background. It reads GPS rows whose `matrix_status` is `to_create` or `to_update`, asks OSRM for each missing pair, and marks those rows `updated`.
+`POST /matrix/sync` runs in the background. It reads `Location` rows whose `matrix_status` is `to_create` or `to_update`, asks OSRM for each missing pair, and marks those rows `updated`.
+
+After pulling a schema redesign, recreate local tables once:
+
+```powershell
+python scripts/reset_db.py --yes
+```
+
+DB columns use PascalCase; Python attributes and JSON use snake_case. Customers and depots share `Location` and are distinguished by `location_type` (`customer` | `depot`), not by brand.
 
 `POST /optimize/` expects at least one vehicle and one order id. The solver runs in the background and writes a job that `/job` can read.
 

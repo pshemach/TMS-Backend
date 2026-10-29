@@ -119,13 +119,13 @@ def test_job_summary_filters_by_day(client, db_session):
         db_session,
         vehicle_id=vehicle["id"],
         day=date(2026, 10, 29),
-        stops=[{"shop_id": shop["id"], "order_id": None}],
+        stops=[{"location_id": shop["id"], "order_id": None}],
     )
     seed_job(
         db_session,
         vehicle_id=vehicle["id"],
         day=date(2026, 11, 2),
-        stops=[{"shop_id": shop["id"], "order_id": None}],
+        stops=[{"location_id": shop["id"], "order_id": None}],
     )
 
     window = client.get("/job/", params={"date_from": "2026-10-01", "date_to": "2026-10-31"})
@@ -145,9 +145,9 @@ def test_route_views_hide_depot_stops_and_keep_visit_order(client, db_session):
         db_session,
         vehicle_id=vehicle["id"],
         stops=[
-            {"shop_id": depot["id"]},
-            {"shop_id": shop["id"], "order_id": "PO-STOP"},
-            {"shop_id": later["id"], "order_id": None},
+            {"location_id": depot["id"]},
+            {"location_id": shop["id"], "order_id": "PO-STOP"},
+            {"location_id": later["id"], "order_id": None},
         ],
     )
 
@@ -163,13 +163,13 @@ def test_route_views_hide_depot_stops_and_keep_visit_order(client, db_session):
     assert route["vehicle_name"] == "LH-10"
     assert route["total_distance"] == 42.5
     assert route["folium_html"] == "<div>map</div>"
-    assert [stop["shop_code"] for stop in route["stops"]] == ["DROP-1", "DROP-2"]
+    assert [stop["location_code"] for stop in route["stops"]] == ["DROP-1", "DROP-2"]
     assert route["stops"][0]["order_id"] == "PO-STOP"
-    assert route["stops"][0]["shop_coords"]["shop_code"] == "DROP-1"
+    assert route["stops"][0]["location_coords"]["location_code"] == "DROP-1"
 
     visits = client.get(f"/job/vehicle/{vehicle['id']}/visits", params={"job_id": job.id})
     assert visits.status_code == 200
-    assert [visit["shop_code"] for visit in visits.json()] == ["DROP-1", "DROP-2"]
+    assert [visit["location_code"] for visit in visits.json()] == ["DROP-1", "DROP-2"]
 
     one_route = client.get(f"/job/vehicle/{vehicle['id']}/route", params={"job_id": job.id})
     assert one_route.status_code == 200
@@ -187,7 +187,7 @@ def test_completing_a_job_completes_its_orders_and_blocks_deletion(client, db_se
         db_session,
         vehicle_id=vehicle["id"],
         status=models.JobStatus.PLANNED,
-        stops=[{"shop_id": shop["id"], "order_id": "PO-FINISH"}],
+        stops=[{"location_id": shop["id"], "order_id": "PO-FINISH"}],
     )
 
     completed = client.patch(f"/job/{job.id}/complete")
@@ -210,7 +210,7 @@ def test_cancelling_a_job_returns_orders_to_pending_and_marks_the_job_failed(cli
     job = seed_job(
         db_session,
         vehicle_id=vehicle["id"],
-        stops=[{"shop_id": shop["id"], "order_id": "PO-CANCEL"}],
+        stops=[{"location_id": shop["id"], "order_id": "PO-CANCEL"}],
     )
     order_row = db_session.query(models.Order).filter(models.Order.id == order["id"]).one()
     order_row.job_id = job.id
@@ -233,7 +233,7 @@ def test_deleting_a_job_resets_linked_orders_and_removes_routes(client, db_sessi
     job = seed_job(
         db_session,
         vehicle_id=vehicle["id"],
-        stops=[{"shop_id": shop["id"], "order_id": "PO-RESET"}],
+        stops=[{"location_id": shop["id"], "order_id": "PO-RESET"}],
     )
     order_row = db_session.query(models.Order).filter(models.Order.id == order["id"]).one()
     order_row.job_id = job.id

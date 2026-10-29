@@ -6,13 +6,13 @@ from src.matrix.manager import DistanceMatrixManager
 
 
 class ORDataModel:
-    def __init__(self, db: Session, vehicles: List[models.Vehicles], orders: List[models.Order], use_time_windows: bool=False, depot_id: int=1):
+    def __init__(self, db: Session, vehicles: List[models.Vehicle], orders: List[models.Order], use_time_windows: bool=False, depot_id: int=1):
         self.db = db
         self.depot_id = depot_id
         self.orders = orders
         
-        self.shop_ids = [o.shop_id for o in orders]
-        self.all_nodes = [self.depot_id] + self.shop_ids  # depot = 1
+        self.location_ids = [o.location_id for o in orders]
+        self.all_nodes = [self.depot_id] + self.location_ids  # depot = 1
         
         self.distance_matrix, self.time_matrix = self._get_matrix(all_nodes=self.all_nodes)
         self.use_time = self._use_time_window(orders) or use_time_windows
@@ -33,7 +33,7 @@ class ORDataModel:
             "matrix": self.matrix,
             "distance_matrix": self.distance_matrix,
             "time_matrix": self.time_matrix,
-            "demands":[0] + [1]*len(self.shop_ids),
+            "demands":[0] + [1]*len(self.location_ids),
             "node_mapping":self.all_nodes,
             "num_vehicles":len(self.max_distance_per_vehicle),
             "depot": 0,
@@ -62,7 +62,7 @@ class ORDataModel:
         
         return has_time_windows
     
-    def _get_vehicle_constrains(self, vehicles: List[models.Vehicles]):
+    def _get_vehicle_constrains(self, vehicles: List[models.Vehicle]):
         max_distance_per_vehicle = []
         max_visits_per_vehicle = []
         
@@ -91,15 +91,15 @@ class ORDataModel:
             end = self._to_minutes(getattr(o, "time_window_end", None))
             
             if start is not None and end is not None:
-                tw[o.id] = (o.shop_id, (start, end))
+                tw[o.id] = (o.location_id, (start, end))
             else:
-                tw[o.id] = (o.shop_id, (0, 1440))
+                tw[o.id] = (o.location_id, (0, 1440))
                 
         return tw
     
     def _build_penalties(self, orders: List[models.Order]):
         
-        shop_priority_map = {}
+        location_priority_map = {}
         
         for order in orders:
             if hasattr(order, 'priority') and order.priority:
@@ -108,20 +108,20 @@ class ORDataModel:
                 priority = models.Priority.MEDIUM
             
             if priority == models.Priority.HIGH:
-                shop_priority_map[order.shop_id] = 100000
+                location_priority_map[order.location_id] = 100000
                 
             elif priority == models.Priority.LOW:
-                shop_priority_map[order.shop_id] = 500 
+                location_priority_map[order.location_id] = 500 
                 
             else:
-                shop_priority_map[order.shop_id] = 5000 
+                location_priority_map[order.location_id] = 5000 
         
         penalties = []       
         for node in self.all_nodes:
             if node == self.depot_id:
                 penalties.append(0) 
             else:
-                penalties.append(shop_priority_map.get(node, 5000)) 
+                penalties.append(location_priority_map.get(node, 5000)) 
                 
         return penalties
     
@@ -135,7 +135,7 @@ class ORDataModel:
             orders: List of order objects
         
         Returns:
-            Dictionary mapping group_id -> [list of shop_ids in that group]
+            Dictionary mapping group_id -> [list of location_ids in that group]
             Example: {1: [shop_5, shop_8, shop_12], 2: [shop_3, shop_7]}
         """
         order_groups = {}
@@ -147,12 +147,12 @@ class ORDataModel:
                     group_id = group.id
                     if group_id not in order_groups:
                         order_groups[group_id] = []
-                    order_groups[group_id].append(order.shop_id)
+                    order_groups[group_id].append(order.location_id)
             
         # Remove duplicates and return only groups with multiple orders
         filtered_groups = {}
-        for group_id, shop_ids in order_groups.items():
-            unique_shops = list(set(shop_ids))
+        for group_id, location_ids in order_groups.items():
+            unique_shops = list(set(location_ids))
             if len(unique_shops) > 1:  # Only enforce constraint if group has multiple orders
                 filtered_groups[group_id] = unique_shops
         
@@ -169,17 +169,17 @@ class ORDataModel:
                 "restrictedVehicle": vehicle_id or None (None = applies to all vehicles)
             }
         """
-        geo_constraints = db.query(models.GeoConstraint).all()
+        geo_constraints = db.query(models.GeoConstraint).filter(models.GeoConstraint.is_deleted.is_(False)).all()
         
         structured_constraints = []
         for gc in geo_constraints:
             constraint = {
                 # Prefer matching by IDs for correctness
-                "fromId": gc.start_shop_id,
-                "toId": gc.end_shop_id,
+                "fromId": gc.start_location_id,
+                "toId": gc.end_location_id,
                 # Keep codes for debugging/legacy if needed (not used in matching)
-                "fromCode": str(gc.start_shop.shop_code) if gc.start_shop else None,
-                "toCode": str(gc.end_shop.shop_code) if gc.end_shop else None,
+                "fromCode": str(gc.start_location.location_code) if gc.start_location else None,
+                "toCode": str(gc.end_location.location_code) if gc.end_location else None,
                 "restrictedVehicle": gc.vehicle_id  # None if applies to all vehicles
             }
             if constraint["fromId"] is not None and constraint["toId"] is not None:
@@ -195,9 +195,9 @@ class ORDataModel:
         Returns:
             Dictionary mapping node_index -> order info dict
             Example: {
-                1: {"id": 1, "order_id": "ORD-001", "shop_id": 5, "priority": "HIGH"},
-                2: {"id": 2, "order_id": "ORD-002", "shop_id": 5, "priority": "MEDIUM"},
-                3: {"id": 3, "order_id": "ORD-003", "shop_id": 8, "priority": "LOW"}
+                1: {"id": 1, "order_id": "ORD-001", "location_id": 5, "priority": "HIGH"},
+                2: {"id": 2, "order_id": "ORD-002", "location_id": 5, "priority": "MEDIUM"},
+                3: {"id": 3, "order_id": "ORD-003", "location_id": 8, "priority": "LOW"}
             }
         """
         order_map = {}
@@ -206,7 +206,7 @@ class ORDataModel:
             order_info = {
                 "id": order.id,
                 "order_id": order.order_id,
-                "shop_id": order.shop_id,
+                "location_id": order.location_id,
                 "priority": order.priority.value if hasattr(order, 'priority') and order.priority else "MEDIUM",
                 "po_value": getattr(order, 'po_value', None),
                 "volume": getattr(order, 'volume', None),

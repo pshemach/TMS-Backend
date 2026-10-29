@@ -64,7 +64,7 @@ window.renderProcessedOrders = function () {
     <tr data-order-id="${order.order_id}">
       <td><input type="checkbox" class="form-check-input order-in-constraint"></td>
       <td>${order.order_id}</td>
-      <td>${order.shop?.shop_code || "-"}</td>
+      <td>${order.location?.location_code || "-"}</td>
       <td>${order.shop?.location || "-"}</td>
       <td>${order.shop?.address || "-"}</td>
       <td>${order.po_value?.toFixed(2) || "-"}</td>

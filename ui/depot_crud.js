@@ -48,8 +48,8 @@ function renderDepotTable(depots) {
     .map(
       (depot) => `
       <tr>
-        <td><strong>${depot.depot_code}</strong></td>
-        <td>${depot.location}</td>
+        <td><strong>${depot.location_code}</strong></td>
+        <td>${depot.location_name}</td>
         <td>${depot.address || "-"}</td>
         <td>${depot.district}</td>
         <td><small>${Number(depot.latitude).toFixed(6)}, ${Number(
@@ -86,8 +86,8 @@ function applyDepotFilters() {
   if (search) {
     filtered = filtered.filter(
       (d) =>
-        (d.depot_code || "").toLowerCase().includes(search) ||
-        (d.location || "").toLowerCase().includes(search)
+        (d.location_code || "").toLowerCase().includes(search) ||
+        (d.location_name || "").toLowerCase().includes(search)
     );
   }
   const district = depotDistrictFilter.value;
@@ -101,8 +101,8 @@ if (depotForm) {
     e.preventDefault();
     const id = document.getElementById("depotId").value;
     const data = {
-      depot_code: document.getElementById("depotCode").value.trim(),
-      location: document.getElementById("depotLocation").value.trim(),
+      location_code: document.getElementById("depotCode").value.trim(),
+      location_name: document.getElementById("depotLocation").value.trim(),
       address: document.getElementById("depotAddress").value.trim(),
       district: document.getElementById("depotDistrict").value.trim(),
       latitude: parseFloat(document.getElementById("depotLatitude").value),
@@ -150,8 +150,8 @@ window.editDepot = async (id) => {
 
     document.getElementById("depotModalTitle").textContent = "Edit Depot";
     document.getElementById("depotId").value = depot.id;
-    document.getElementById("depotCode").value = depot.depot_code;
-    document.getElementById("depotLocation").value = depot.location;
+    document.getElementById("depotCode").value = depot.location_code;
+    document.getElementById("depotLocation").value = depot.location_name;
     document.getElementById("depotAddress").value = depot.address || "";
     document.getElementById("depotDistrict").value = depot.district;
     document.getElementById("depotLatitude").value = depot.latitude;

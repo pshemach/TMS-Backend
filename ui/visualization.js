@@ -713,17 +713,21 @@
     title.textContent = `Route Stops - ${currentRoute.vehicle_name}`;
 
     tbody.innerHTML = currentRoute.stops
-      .map(
-        (stop) => `
-      <tr>
+      .map((stop) => {
+        const isDepot = (stop.location_type || "").toLowerCase() === "depot";
+        const code = isDepot
+          ? `<span class="badge bg-success">Depot</span> ${stop.location_code}`
+          : stop.location_code;
+        return `
+      <tr class="${isDepot ? "table-success" : ""}">
         <td><strong>${stop.sequence}</strong></td>
-        <td>${stop.shop_code}</td>
-        <td>${stop.order_id || "-"}</td>
-        <td>${stop.shop_location || "-"}</td>
-        <td>${stop.shop_address || "-"}</td>
+        <td>${code}</td>
+        <td>${stop.order_id || (isDepot ? "—" : "-")}</td>
+        <td>${stop.location_name || "-"}</td>
+        <td>${stop.location_address || "-"}</td>
       </tr>
-    `
-      )
+    `;
+      })
       .join("");
 
     card.style.display = "block";
@@ -978,10 +982,10 @@
                     <td style="text-align: center;"><strong>${
                       stop.sequence
                     }</strong></td>
-                    <td>${stop.shop_code}</td>
+                    <td>${stop.location_code}</td>
                     <td>${stop.order_id || "-"}</td>
-                    <td>${stop.shop_location || "-"}</td>
-                    <td>${stop.shop_address || "-"}</td>
+                    <td>${stop.location_name || "-"}</td>
+                    <td>${stop.location_address || "-"}</td>
                   </tr>
                 `
                   )

@@ -136,7 +136,7 @@
       .concat(
         allDepotsForOptimization.map(
           (d) =>
-            `<option value="${d.id}">${d.depot_code} — ${d.location}</option>`
+            `<option value="${d.id}">${d.location_code} — ${d.location_name || ""}</option>`
         )
       )
       .join("");
@@ -371,7 +371,7 @@
         (order) => `
       <tr>
         <td><strong>${order.order_id}</strong></td>
-        <td>${order.shop?.shop_code || "-"}</td>
+        <td>${order.location?.location_code || "-"}</td>
         <td>${order.shop?.location || "-"}</td>
         <td>${order.shop?.brand || "-"}</td>
         <td>${order.po_value?.toFixed(2) || "-"}</td>

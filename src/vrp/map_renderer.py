@@ -23,8 +23,8 @@ class MapManager:
                 logging.debug("No shops in solution route.")
                 return None
             
-            shops = self.db.query(models.GPSMaster).filter(
-                models.GPSMaster.id.in_(shop_ids)
+            shops = self.db.query(models.Location).filter(
+                models.Location.id.in_(shop_ids)
             ).all()
             
             if not shops:
@@ -144,7 +144,7 @@ class MapManager:
                     # Depot marker (green with home icon)
                     folium.Marker(
                             location=[s.latitude, s.longitude],
-                            popup=f"🏠 DEPOT<br>{getattr(s, 'shop_code', '')}<br>{getattr(s, 'location', '')}",
+                            popup=f"🏠 DEPOT<br>{getattr(s, 'location_code', '')}<br>{getattr(s, 'location_name', '')}",
                             tooltip="Depot",
                             icon=folium.Icon(color='green', icon='home', prefix='fa')
                         ).add_to(fmap)
@@ -169,7 +169,7 @@ class MapManager:
                         
                     folium.Marker(
                             location=[s.latitude, s.longitude],
-                            popup=f"Stop {seq}<br>{getattr(s, 'shop_code', '')}<br>{getattr(s, 'location', '')}<br>{getattr(s, 'brand', '')}",
+                            popup=f"Stop {seq}<br>{getattr(s, 'location_code', '')}<br>{getattr(s, 'location_name', '')}<br>{getattr(s, 'brand', '')}",
                             tooltip=f"Stop {seq}",
                             icon=folium.DivIcon(html=icon_html)
                         ).add_to(fmap)
@@ -212,9 +212,9 @@ class MapManager:
         First tries database cache, then falls back to OSRM API.
         """
         # Try to get from database cache (bidirectional)
-        matrix_entry = self.db.query(models.MatrixMaster).filter(
-            ((models.MatrixMaster.shop_id_1 == origin_id) & (models.MatrixMaster.shop_id_2 == dest_id)) |
-            ((models.MatrixMaster.shop_id_1 == dest_id) & (models.MatrixMaster.shop_id_2 == origin_id))
+        matrix_entry = self.db.query(models.DistanceMatrix).filter(
+            ((models.DistanceMatrix.location_id_1 == origin_id) & (models.DistanceMatrix.location_id_2 == dest_id)) |
+            ((models.DistanceMatrix.location_id_1 == dest_id) & (models.DistanceMatrix.location_id_2 == origin_id))
         ).first()
         
         if matrix_entry and matrix_entry.coords:
@@ -237,7 +237,7 @@ class MapManager:
                 
                 if coords:
                     # Handle potential reverse direction
-                    if matrix_entry.shop_id_1 == dest_id and matrix_entry.shop_id_2 == origin_id:
+                    if matrix_entry.location_id_1 == dest_id and matrix_entry.location_id_2 == origin_id:
                         coords = list(reversed(coords))
                     
                     # Convert to tuple format - handle both [lat, lon] and (lat, lon)
@@ -273,9 +273,9 @@ class MapManager:
         """Cache path coordinates in database."""
         try:
             # Check if already exists
-            existing = self.db.query(models.MatrixMaster).filter(
-                ((models.MatrixMaster.shop_id_1 == origin_id) & (models.MatrixMaster.shop_id_2 == dest_id)) |
-                ((models.MatrixMaster.shop_id_1 == dest_id) & (models.MatrixMaster.shop_id_2 == origin_id))
+            existing = self.db.query(models.DistanceMatrix).filter(
+                ((models.DistanceMatrix.location_id_1 == origin_id) & (models.DistanceMatrix.location_id_2 == dest_id)) |
+                ((models.DistanceMatrix.location_id_1 == dest_id) & (models.DistanceMatrix.location_id_2 == origin_id))
             ).first()
             
             # Convert coords to list format for JSON storage
@@ -290,7 +290,7 @@ class MapManager:
                 else:
                     logging.debug(f"Cache already exists for {origin_id} -> {dest_id}, skipping update")
             else:
-                logging.debug(f"Warning: No MatrixMaster entry found for {origin_id} -> {dest_id}, cannot cache coords")
+                logging.debug(f"Warning: No DistanceMatrix entry found for {origin_id} -> {dest_id}, cannot cache coords")
                 
         except Exception as e:
             logging.error(f"Warning: Failed to cache path in database: {e}")

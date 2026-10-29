@@ -27,9 +27,10 @@ class MatrixStatsResponse(BaseModel):
 
 class PendingLocationItem(BaseModel):
     id: int
-    shop_code: str
-    location: Optional[str] = None
+    location_code: str
+    location_name: Optional[str] = None
     brand: Optional[str] = None
+    location_type: Optional[str] = None
     matrix_status: Optional[str] = None
 
 

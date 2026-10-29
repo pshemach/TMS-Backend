@@ -43,7 +43,7 @@ function setupGeoShopAutocomplete() {
   const shopOptions = geoShops
     .map(
       (s) => `
-    <option value="${s.shop_code}">${s.location || ""} - ${s.address || ""} (${
+    <option value="${s.location_code}">${s.location_name || ""} - ${s.address || ""} (${
         s.district || ""
       })</option>
   `
@@ -67,15 +67,15 @@ function setupGeoShopAutocomplete() {
     const val = newStartInput.value.toLowerCase();
     const filtered = geoShops.filter(
       (s) =>
-        s.shop_code.toLowerCase().includes(val) ||
-        (s.location && s.location.toLowerCase().includes(val)) ||
+        s.location_code.toLowerCase().includes(val) ||
+        (s.location_name && s.location_name.toLowerCase().includes(val)) ||
         (s.address && s.address.toLowerCase().includes(val))
     );
 
     startList.innerHTML = filtered
       .map(
         (s) => `
-      <option value="${s.shop_code}">${s.location || ""} - ${
+      <option value="${s.location_code}">${s.location_name || ""} - ${
           s.address || ""
         } (${s.district || ""})</option>
     `
@@ -90,15 +90,15 @@ function setupGeoShopAutocomplete() {
     const val = newEndInput.value.toLowerCase();
     const filtered = geoShops.filter(
       (s) =>
-        s.shop_code.toLowerCase().includes(val) ||
-        (s.location && s.location.toLowerCase().includes(val)) ||
+        s.location_code.toLowerCase().includes(val) ||
+        (s.location_name && s.location_name.toLowerCase().includes(val)) ||
         (s.address && s.address.toLowerCase().includes(val))
     );
 
     endList.innerHTML = filtered
       .map(
         (s) => `
-      <option value="${s.shop_code}">${s.location || ""} - ${
+      <option value="${s.location_code}">${s.location_name || ""} - ${
           s.address || ""
         } (${s.district || ""})</option>
     `
@@ -119,7 +119,7 @@ function setupGeoShopAutocomplete() {
 
 // Validate start shop
 function validateStartShop(code) {
-  const shop = geoShops.find((s) => s.shop_code === code);
+  const shop = geoShops.find((s) => s.location_code === code);
   const detailsEl = document.getElementById("startShopDetails");
 
   if (shop) {
@@ -141,7 +141,7 @@ function validateStartShop(code) {
 
 // Validate end shop
 function validateEndShop(code) {
-  const shop = geoShops.find((s) => s.shop_code === code);
+  const shop = geoShops.find((s) => s.location_code === code);
   const detailsEl = document.getElementById("endShopDetails");
 
   if (shop) {
@@ -256,10 +256,10 @@ async function fetchGeoConstraints() {
           // Fetch full shop details for start and end shops
           const [startShopRes, endShopRes] = await Promise.all([
             fetch(
-              TMS_API.url(`/location/customer/code/${constraint.start_shop.shop_code}`)
+              TMS_API.url(`/location/customer/code/${constraint.start_location.location_code}`)
             ),
             fetch(
-              TMS_API.url(`/location/customer/code/${constraint.end_shop.shop_code}`)
+              TMS_API.url(`/location/customer/code/${constraint.end_location.location_code}`)
             ),
           ]);
 
@@ -269,8 +269,8 @@ async function fetchGeoConstraints() {
 
             return {
               ...constraint,
-              start_shop: { ...constraint.start_shop, ...startShopFull },
-              end_shop: { ...constraint.end_shop, ...endShopFull },
+              start_shop: { ...constraint.start_location, ...startShopFull },
+              end_shop: { ...constraint.end_location, ...endShopFull },
             };
           }
         } catch (err) {
@@ -303,22 +303,22 @@ function renderGeoConstraints(constraints) {
     <div class="border p-3 mb-2 rounded bg-light d-flex justify-content-between align-items-center">
       <div>
         <div class="mb-1">
-          <strong>${c.start_shop.shop_code}</strong> 
-          <span class="text-primary">${c.start_shop.location || ""}</span>
-          <span class="badge bg-secondary">${c.start_shop.brand || ""}</span>
+          <strong>${c.start_location.location_code}</strong> 
+          <span class="text-primary">${c.start_location.location || ""}</span>
+          <span class="badge bg-secondary">${c.start_location.brand || ""}</span>
         </div>
         <div class="mb-1">
           <i class="bi bi-arrow-down"></i>
         </div>
         <div class="mb-2">
-          <strong>${c.end_shop.shop_code}</strong> 
-          <span class="text-primary">${c.end_shop.location || ""}</span>
-          <span class="badge bg-secondary">${c.end_shop.brand || ""}</span>
+          <strong>${c.end_location.location_code}</strong> 
+          <span class="text-primary">${c.end_location.location || ""}</span>
+          <span class="badge bg-secondary">${c.end_location.brand || ""}</span>
         </div>
         <div class="small text-muted">
-          (${c.start_shop.latitude}, ${c.start_shop.longitude}) → (${
-        c.end_shop.latitude
-      }, ${c.end_shop.longitude})
+          (${c.start_location.latitude}, ${c.start_location.longitude}) → (${
+        c.end_location.latitude
+      }, ${c.end_location.longitude})
         </div>
         ${
           c.vehicle
@@ -368,8 +368,8 @@ document
     }
 
     const payload = {
-      start_shop_id: selectedStartShop.id,
-      end_shop_id: selectedEndShop.id,
+      start_location_id: selectedStartShop.id,
+      end_location_id: selectedEndShop.id,
       vehicle_id: selectedVehicle ? selectedVehicle.id : null,
     };
 
@@ -422,14 +422,14 @@ document
 
       document.getElementById("geoConstraintId").value = geo.id;
       document.getElementById("startShopInput").value =
-        geo.start_shop.shop_code;
-      document.getElementById("endShopInput").value = geo.end_shop.shop_code;
+        geo.start_location.location_code;
+      document.getElementById("endShopInput").value = geo.end_location.location_code;
       document.getElementById("vehicleSelect").value =
         geo.vehicle?.vehicle_name || geo.vehicle?.name || "";
 
       // Validate to show details
-      validateStartShop(geo.start_shop.shop_code);
-      validateEndShop(geo.end_shop.shop_code);
+      validateStartShop(geo.start_location.location_code);
+      validateEndShop(geo.end_location.location_code);
       if (geo.vehicle) {
         validateVehicle(geo.vehicle.vehicle_name || geo.vehicle.name);
       }

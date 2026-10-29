@@ -17,9 +17,9 @@ def get_all_vehicles(fleet_id: Optional[int], db: Session):
                 logging.debug(f"Fleet with id {fleet_id} not found")
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Fleet with id {fleet_id} not found")
             
-            vehicles = db.query(models.Vehicles).filter(models.Vehicles.fleet_id == fleet_id).all()
+            vehicles = db.query(models.Vehicle).filter(models.Vehicle.fleet_id == fleet_id).all()
         else:
-            vehicles = db.query(models.Vehicles).all()
+            vehicles = db.query(models.Vehicle).all()
             
         return vehicles
     except HTTPException as e:
@@ -31,7 +31,7 @@ def get_all_vehicles(fleet_id: Optional[int], db: Session):
 def get_vehicle(id:int, db: Session):
     "Retrieve a vehicle by its ID"
     try:
-        vehicle = db.query(models.Vehicles).filter(models.Vehicles.id == id).first()
+        vehicle = db.query(models.Vehicle).filter(models.Vehicle.id == id).first()
         if not vehicle:
             return None
         return vehicle
@@ -42,13 +42,13 @@ def get_vehicle(id:int, db: Session):
 def create_vehicle(fleet_id: int, request: schemas.VehicleRequest, db: Session):
     """Add vehicle to the fleet"""
     try:
-        fleet = db.query(models.Fleets).filter(models.Fleets.id == fleet_id).first()
+        fleet = db.query(models.Fleet).filter(models.Fleet.id == fleet_id).first()
         
         if not fleet:
             logging.debug(f"Fleet with id {fleet_id} not found")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Fleet with id {fleet_id} not found")
             
-        new_vehicle = models.Vehicles(
+        new_vehicle = models.Vehicle(
             vehicle_name = request.vehicle_name,
             fleet_id = fleet_id,
             type = request.type,
@@ -58,7 +58,7 @@ def create_vehicle(fleet_id: int, request: schemas.VehicleRequest, db: Session):
         db.add(new_vehicle)
         db.flush()
         
-        new_constraint = models.VehicleConstrain(
+        new_constraint = models.VehicleConstraint(
             vehicle_id=new_vehicle.id,
             vehicle_name=new_vehicle.vehicle_name,
             fleet=fleet.fleet_name,
@@ -93,7 +93,7 @@ def create_vehicle(fleet_id: int, request: schemas.VehicleRequest, db: Session):
 def update_vehicle(vehicle_id: int, request: schemas.VehicleRequest, db: Session):
     """Update a vehicle and adjust fleet vehicle counts if status changes."""
     try: 
-        vehicle = db.query(models.Vehicles).filter(models.Vehicles.id==vehicle_id).first()
+        vehicle = db.query(models.Vehicle).filter(models.Vehicle.id==vehicle_id).first()
         if not vehicle:
             logging.debug(f"Vehicle with id {vehicle_id} not found")
             raise HTTPException(
@@ -101,7 +101,7 @@ def update_vehicle(vehicle_id: int, request: schemas.VehicleRequest, db: Session
                 detail=f"Vehicle with id {vehicle_id} not found"
             )
             
-        fleet = db.query(models.Fleets).filter(models.Fleets.id == vehicle.fleet_id).first()
+        fleet = db.query(models.Fleet).filter(models.Fleet.id == vehicle.fleet_id).first()
         if not fleet:
             logging.debug(f"Fleet with id {vehicle.fleet_id} not found")
             raise HTTPException(
@@ -117,7 +117,7 @@ def update_vehicle(vehicle_id: int, request: schemas.VehicleRequest, db: Session
         vehicle.status = new_status
         vehicle.location = request.location
         
-        constraint = db.query(models.VehicleConstrain).filter(models.VehicleConstrain.vehicle_id == vehicle_id).first()
+        constraint = db.query(models.VehicleConstraint).filter(models.VehicleConstraint.vehicle_id == vehicle_id).first()
         if constraint:
             constraint.vehicle_name = request.vehicle_name
             constraint.type = request.type
@@ -146,7 +146,7 @@ def delete_vehicle(vehicle_id: int, db: Session):
     """Delete a vehicle AND its constraint, then update fleet counts."""
     try:
         # Get vehicle (with constraint pre-loaded to avoid extra query)
-        vehicle = db.query(models.Vehicles).filter(models.Vehicles.id == vehicle_id).first()
+        vehicle = db.query(models.Vehicle).filter(models.Vehicle.id == vehicle_id).first()
         if not vehicle:
             logging.debug(f"Vehicle with id {vehicle_id} not found")
             raise HTTPException(
@@ -155,7 +155,7 @@ def delete_vehicle(vehicle_id: int, db: Session):
             )
 
         # Get fleet for count updates
-        fleet = db.query(models.Fleets).filter(models.Fleets.id == vehicle.fleet_id).first()
+        fleet = db.query(models.Fleet).filter(models.Fleet.id == vehicle.fleet_id).first()
         if not fleet:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -167,7 +167,7 @@ def delete_vehicle(vehicle_id: int, db: Session):
         if vehicle.status == "available":
             fleet.available_vehicles -= 1
 
-        db.delete(vehicle)
+        vehicle.soft_delete()
         db.commit()
         
         logging.info(f"Vehicle {vehicle_id} and its constraint deleted successfully")

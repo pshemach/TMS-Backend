@@ -8,17 +8,18 @@ from src.matrix.manager import DistanceMatrixManager
 
 def get_pending_locations(db: Session):
     return (
-        db.query(models.GPSMaster)
+        db.query(models.Location)
         .filter(
-            (models.GPSMaster.matrix_status == "to_update")
-            | (models.GPSMaster.matrix_status == "to_create")
+            models.Location.is_deleted.is_(False),
+            models.Location.matrix_status.in_(
+                [models.MatrixStatus.TO_UPDATE, models.MatrixStatus.TO_CREATE]
+            ),
         )
-        .order_by(models.GPSMaster.id)
+        .order_by(models.Location.id)
         .all()
     )
 
 
-# Back-compat alias
 get_pending_shops = get_pending_locations
 
 
@@ -27,7 +28,6 @@ def get_stats(db: Session) -> dict:
 
 
 def sync_pending(db: Session, max_workers: int = 10) -> int:
-    """Process pending matrix updates. Returns calculation count (or 0)."""
     manager = DistanceMatrixManager(db, max_workers=max_workers)
     result = manager.process_pending_updates()
     return result or 0

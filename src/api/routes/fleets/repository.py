@@ -10,7 +10,7 @@ import sys
 def all_fleets(db: Session):
     """Retrieve all fleets from the database."""
     try:
-        fleets = db.query(models.Fleets).all()
+        fleets = db.query(models.Fleet).filter(models.Fleet.is_deleted.is_(False)).all()
         if not fleets:
             return  None
         return fleets
@@ -21,7 +21,7 @@ def all_fleets(db: Session):
 def get_fleet(id: int, db: Session):
     """Retrieve a fleet by ID."""
     try:
-        fleet = fleet = db.query(models.Fleets).filter(models.Fleets.id == id).first()
+        fleet = fleet = db.query(models.Fleet).filter(models.Fleet.id == id).first()
         if not fleet:
             return None
         return fleet
@@ -32,7 +32,7 @@ def get_fleet(id: int, db: Session):
 def create_fleet(request: schemas.FleetRequest, db: Session):
     """Create a new fleet."""
     try:
-        new_fleet = models.Fleets(
+        new_fleet = models.Fleet(
             fleet_name=request.fleet_name,
             type=request.type,
             region=request.region,
@@ -56,13 +56,13 @@ def create_fleet(request: schemas.FleetRequest, db: Session):
 def delete_fleet(id: int, db: Session):
     """Delete a fleet by ID."""
     try:
-        fleet = db.query(models.Fleets).filter(models.Fleets.id == id).first()
+        fleet = db.query(models.Fleet).filter(models.Fleet.id == id).first()
         if not fleet:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Fleet with id {id} not found"
             )
-        db.delete(fleet)
+        fleet.soft_delete()
         db.commit()
         
         logging.info(f"Fleet with id {id} deleted")
@@ -77,7 +77,7 @@ def delete_fleet(id: int, db: Session):
 def update_fleet(id: int, request: schemas.FleetRequest, db: Session):
     """Update fleet metadata (excludes vehicle counts)."""
     try:
-        fleet = db.query(models.Fleets).filter(models.Fleets.id == id)
+        fleet = db.query(models.Fleet).filter(models.Fleet.id == id)
         if not fleet.first():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -86,15 +86,15 @@ def update_fleet(id: int, request: schemas.FleetRequest, db: Session):
         
         update_data = {}
         if request.fleet_name is not None:
-            update_data[models.Fleets.fleet_name] = request.fleet_name
+            update_data[models.Fleet.fleet_name] = request.fleet_name
         if request.type is not None:
-            update_data[models.Fleets.type] = request.type
+            update_data[models.Fleet.type] = request.type
         if request.region is not None:
-            update_data[models.Fleets.region] = request.region
+            update_data[models.Fleet.region] = request.region
         if request.manager is not None:
-            update_data[models.Fleets.manager] = request.manager
+            update_data[models.Fleet.manager] = request.manager
         if request.status is not None:
-            update_data[models.Fleets.status] = request.status
+            update_data[models.Fleet.status] = request.status
         
         if not update_data:
             raise HTTPException(

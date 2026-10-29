@@ -1,9 +1,9 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CustomerBase(BaseModel):
-    shop_code: str = Field(description="Unique customer code")
-    location: str = Field(description="Preferred location name")
+    location_code: str = Field(description="Unique customer code")
+    location_name: str = Field(description="Preferred location name")
     address: str = Field(description="Customer address")
     brand: str = Field(description="Brand")
     district: str = Field(description="District")
@@ -17,5 +17,8 @@ class CustomerRequest(CustomerBase):
 
 
 class CustomerResponse(CustomerBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
+    location_type: str = "customer"
     matrix_status: str

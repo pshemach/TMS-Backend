@@ -12,7 +12,6 @@ router = APIRouter(prefix="/matrix", tags=["matrix"])
 
 
 def _run_matrix_sync_task(max_workers: int = 10) -> None:
-    """Background worker — opens its own DB session."""
     db = SessionLocal()
     try:
         logging.info(f"Matrix sync started (workers={max_workers})")
@@ -26,23 +25,26 @@ def _run_matrix_sync_task(max_workers: int = 10) -> None:
 
 @router.get("/stats", response_model=schemas.MatrixStatsResponse)
 def matrix_stats(db: Session = Depends(get_db)):
-    """Return current distance-matrix coverage statistics."""
     return repository.get_stats(db)
 
 
 @router.get("/pending", response_model=schemas.PendingLocationsResponse)
 def matrix_pending(db: Session = Depends(get_db)):
-    """List locations waiting for matrix create/update."""
     locations = repository.get_pending_locations(db)
     return schemas.PendingLocationsResponse(
         count=len(locations),
         locations=[
             schemas.PendingLocationItem(
                 id=s.id,
-                shop_code=s.shop_code,
-                location=s.location,
+                location_code=s.location_code,
+                location_name=s.location_name,
                 brand=s.brand,
-                matrix_status=s.matrix_status,
+                location_type=s.location_type.value
+                if hasattr(s.location_type, "value")
+                else str(s.location_type),
+                matrix_status=s.matrix_status.value
+                if hasattr(s.matrix_status, "value")
+                else str(s.matrix_status),
             )
             for s in locations
         ],
@@ -59,12 +61,6 @@ def sync_matrix(
     request: schemas.MatrixSyncRequest = schemas.MatrixSyncRequest(),
     db: Session = Depends(get_db),
 ):
-    """
-    Sync pending locations into the distance/duration matrix (background).
-
-    Processes GPS rows with matrix_status `to_create` or `to_update`
-    via OSRM, then marks them `updated`.
-    """
     pending = repository.get_pending_locations(db)
     if not pending:
         raise HTTPException(

@@ -114,8 +114,8 @@ function renderTable(shops) {
     .map(
       (shop) => `
     <tr>
-      <td><strong>${shop.shop_code}</strong></td>
-      <td>${shop.location}</td>
+      <td><strong>${shop.location_code}</strong></td>
+      <td>${shop.location_name}</td>
       <td>${shop.address || "-"}</td>
       <td><span class="badge bg-info">${shop.brand}</span></td>
       <td>${shop.district}</td>
@@ -155,8 +155,8 @@ function applyFilters() {
   if (search) {
     filtered = filtered.filter(
       (s) =>
-        s.shop_code.toLowerCase().includes(search) ||
-        s.location.toLowerCase().includes(search)
+        s.location_code.toLowerCase().includes(search) ||
+        s.location_name.toLowerCase().includes(search)
     );
   }
 
@@ -174,8 +174,8 @@ shopForm.onsubmit = async (e) => {
   e.preventDefault();
   const id = document.getElementById("shopId").value;
   const data = {
-    shop_code: document.getElementById("shopCode").value.trim(),
-    location: document.getElementById("location").value.trim(),
+    location_code: document.getElementById("locationCode").value.trim(),
+    location_name: document.getElementById("location").value.trim(),
     address: document.getElementById("address").value.trim(),
     brand: document.getElementById("brand").value.trim(),
     district: document.getElementById("district").value.trim(),
@@ -227,8 +227,8 @@ window.editShop = async (id) => {
 
     document.getElementById("modalTitle").textContent = "Edit Customer";
     document.getElementById("shopId").value = shop.id;
-    document.getElementById("shopCode").value = shop.shop_code;
-    document.getElementById("location").value = shop.location;
+    document.getElementById("locationCode").value = shop.location_code;
+    document.getElementById("location").value = shop.location_name;
     document.getElementById("address").value = shop.address || "";
     document.getElementById("brand").value = shop.brand;
     document.getElementById("district").value = shop.district;

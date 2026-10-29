@@ -71,7 +71,7 @@ def delete_job(db: Session, job_id: int) -> dict:
         }, synchronize_session=False)
     
     # Delete the job (routes and stops will cascade delete)
-    db.delete(job)
+    job.soft_delete()
     db.commit()
     
     return {

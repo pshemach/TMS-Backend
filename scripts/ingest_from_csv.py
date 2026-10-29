@@ -1,21 +1,19 @@
 """Bulk-load location + distance/duration matrix data from CSV into the DB.
 
-Bypasses DistanceMatrixManager.process_pending_updates() (OSRM per pair).
-
 Expected files (adjust paths via --csv-dir):
     data/csv/master_gps.csv
     data/csv/osrm_distance_matrix.csv
     data/csv/osrm_duration_matrix.csv
 
-Matrix CSVs auto-detect format:
-  WIDE  (grid):  header = ["shop_code", <code2>, ...]  (DB column name kept)
-  LONG  (list):  shop_code_1 / shop_code_2 / value columns
+CSV may include location_type / type. If missing and brand is 'depot',
+row is typed as depot (ingest-only compat); app code never uses brand for type.
 
 Usage:
     python scripts/ingest_from_csv.py --dry-run
     python scripts/ingest_from_csv.py
-    python scripts/ingest_from_csv.py --csv-dir "C:\\path\\to\\csv" --dry-run
 """
+
+from __future__ import annotations
 
 import argparse
 import csv
@@ -26,7 +24,12 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.infrastructure.database.models import GPSMaster, MatrixMaster
+from src.infrastructure.database.models import (
+    DistanceMatrix,
+    Location,
+    LocationType,
+    MatrixStatus,
+)
 from src.infrastructure.database.session import SessionLocal
 
 DEFAULT_CSV_DIR = Path("data/csv")
@@ -34,10 +37,16 @@ MASTER_GPS_FILE = "master_gps.csv"
 DISTANCE_FILE = "osrm_distance_matrix.csv"
 DURATION_FILE = "osrm_duration_matrix.csv"
 
-# CSV aliases — shop_code is the DB/CSV column name for location codes
 GPS_COLUMN_ALIASES = {
-    "shop_code": ["shop_code", "code", "shopcode", "customer_code", "depot_code"],
-    "location": ["location", "loc"],
+    "location_code": [
+        "location_code",
+        "shop_code",
+        "code",
+        "shopcode",
+        "customer_code",
+        "depot_code",
+    ],
+    "location_name": ["location_name", "location", "loc", "name"],
     "address": ["address", "addr"],
     "brand": ["brand"],
     "district": ["district"],
@@ -45,10 +54,20 @@ GPS_COLUMN_ALIASES = {
     "longitude": ["longitude", "lon", "lng"],
 }
 
+OPTIONAL_TYPE_ALIASES = ["location_type", "type", "loctype"]
+
 LONG_COL_ALIASES = {
-    "code1": ["shop_code_1", "from", "source", "origin", "code1", "shop1"],
-    "code2": ["shop_code_2", "to", "target", "destination", "code2", "shop2"],
-    "value": ["distance_km", "distance", "time_minutes", "duration", "value", "km", "minutes"],
+    "code1": ["location_code_1", "shop_code_1", "from", "source", "origin", "code1"],
+    "code2": ["location_code_2", "shop_code_2", "to", "target", "destination", "code2"],
+    "value": [
+        "distance_km",
+        "distance",
+        "time_minutes",
+        "duration",
+        "value",
+        "km",
+        "minutes",
+    ],
 }
 
 BATCH_COMMIT_EVERY = 200
@@ -69,17 +88,32 @@ def resolve_gps_columns(header_norm):
     resolved = {}
     for field, aliases in GPS_COLUMN_ALIASES.items():
         idx = find_col(header_norm, aliases)
+        if idx is None and field == "brand":
+            resolved[field] = None
+            continue
         if idx is None:
             raise ValueError(
                 f"Could not find a column for '{field}' in {MASTER_GPS_FILE} "
                 f"(looked for any of {aliases}). Actual headers: {header_norm}"
             )
         resolved[field] = idx
+    resolved["location_type"] = find_col(header_norm, OPTIONAL_TYPE_ALIASES)
     return resolved
 
 
+def _resolve_type(raw_type: str | None, brand: str | None) -> LocationType:
+    if raw_type:
+        value = raw_type.strip().lower()
+        if value in {"depot", "depots"}:
+            return LocationType.DEPOT
+        if value in {"customer", "customers", "shop", "shops"}:
+            return LocationType.CUSTOMER
+    if brand and brand.strip().lower() == "depot":
+        return LocationType.DEPOT
+    return LocationType.CUSTOMER
+
+
 def load_locations(path):
-    """Parse GPS CSV into location dicts (customers + depots)."""
     with open(path, newline="", encoding="utf-8-sig") as f:
         reader = csv.reader(f)
         header = next(reader)
@@ -88,25 +122,34 @@ def load_locations(path):
 
         locations = []
         for row in reader:
-            if not row or not row[cols["shop_code"]].strip():
+            if not row or not row[cols["location_code"]].strip():
                 continue
-            locations.append({
-                "shop_code": row[cols["shop_code"]].strip(),
-                "location": row[cols["location"]].strip(),
-                "address": row[cols["address"]].strip(),
-                "brand": row[cols["brand"]].strip(),
-                "district": row[cols["district"]].strip(),
-                "latitude": float(row[cols["latitude"]]),
-                "longitude": float(row[cols["longitude"]]),
-            })
+            brand = (
+                row[cols["brand"]].strip()
+                if cols["brand"] is not None and cols["brand"] < len(row)
+                else None
+            )
+            raw_type = (
+                row[cols["location_type"]].strip()
+                if cols["location_type"] is not None and cols["location_type"] < len(row)
+                else None
+            )
+            locations.append(
+                {
+                    "location_code": row[cols["location_code"]].strip(),
+                    "location_name": row[cols["location_name"]].strip(),
+                    "address": row[cols["address"]].strip(),
+                    "brand": brand,
+                    "district": row[cols["district"]].strip(),
+                    "latitude": float(row[cols["latitude"]]),
+                    "longitude": float(row[cols["longitude"]]),
+                    "location_type": _resolve_type(raw_type, brand),
+                }
+            )
         return locations
 
 
 def load_matrix_csv(path):
-    """
-    Auto-detects wide vs long format.
-    Returns dict[(code_1, code_2)] = float_value (sorted tuple key).
-    """
     with open(path, newline="", encoding="utf-8-sig") as f:
         reader = csv.reader(f)
         rows = list(reader)
@@ -128,7 +171,6 @@ def load_matrix_csv(path):
     )
 
     result = {}
-
     if looks_wide:
         print(
             f"  [detected] WIDE matrix format in {path.name} "
@@ -148,27 +190,19 @@ def load_matrix_csv(path):
                     val = float(raw)
                 except ValueError:
                     continue
-                key = tuple(sorted((code1, code2)))
-                result[key] = val
+                result[tuple(sorted((code1, code2)))] = val
         return result
 
     idx_c1 = find_col(header_norm, LONG_COL_ALIASES["code1"])
     idx_c2 = find_col(header_norm, LONG_COL_ALIASES["code2"])
     idx_val = find_col(header_norm, LONG_COL_ALIASES["value"])
-
     if idx_c1 is None or idx_c2 is None or idx_val is None:
-        raise ValueError(
-            f"Could not detect matrix format for {path}. "
-            f"Headers found: {header}. Neither a WIDE grid nor a recognizable "
-            f"LONG format (code1/code2/value columns) was matched. "
-            f"Adjust LONG_COL_ALIASES in this script or check the file."
-        )
+        raise ValueError(f"Could not detect matrix format for {path}. Headers: {header}")
 
     print(
         f"  [detected] LONG matrix format in {path.name} "
         f"(cols: {header[idx_c1]!r}, {header[idx_c2]!r}, {header[idx_val]!r})"
     )
-
     for r in data_rows:
         if not r:
             continue
@@ -181,53 +215,60 @@ def load_matrix_csv(path):
             val = float(raw)
         except ValueError:
             continue
-        key = tuple(sorted((code1, code2)))
-        result[key] = val
-
+        result[tuple(sorted((code1, code2)))] = val
     return result
 
 
 def upsert_locations(db, locations):
-    """Insert/update GPSMaster by shop_code. Returns dict[code] -> row."""
     code_to_location = {}
     created, updated, unchanged = 0, 0, 0
 
     for row in locations:
-        existing = db.query(GPSMaster).filter(GPSMaster.shop_code == row["shop_code"]).first()
+        existing = (
+            db.query(Location)
+            .filter(
+                Location.location_code == row["location_code"],
+                Location.is_deleted.is_(False),
+            )
+            .first()
+        )
         if existing:
             changed = (
                 existing.latitude != row["latitude"]
                 or existing.longitude != row["longitude"]
-                or existing.location != row["location"]
+                or existing.location_name != row["location_name"]
                 or existing.address != row["address"]
                 or existing.brand != row["brand"]
                 or existing.district != row["district"]
+                or existing.location_type != row["location_type"]
             )
             if changed:
-                existing.location = row["location"]
+                existing.location_name = row["location_name"]
                 existing.address = row["address"]
                 existing.brand = row["brand"]
                 existing.district = row["district"]
                 existing.latitude = row["latitude"]
                 existing.longitude = row["longitude"]
+                existing.location_type = row["location_type"]
                 updated += 1
             else:
                 unchanged += 1
-            code_to_location[row["shop_code"]] = existing
+            code_to_location[row["location_code"]] = existing
         else:
-            new_row = GPSMaster(
-                shop_code=row["shop_code"],
-                location=row["location"],
+            new_row = Location(
+                location_code=row["location_code"],
+                location_name=row["location_name"],
                 address=row["address"],
                 brand=row["brand"],
                 district=row["district"],
                 latitude=row["latitude"],
                 longitude=row["longitude"],
-                matrix_status="to_create",
+                location_type=row["location_type"],
+                matrix_status=MatrixStatus.TO_CREATE,
             )
             db.add(new_row)
             created += 1
-            code_to_location[row["shop_code"]] = new_row
+            code_to_location[row["location_code"]] = new_row
 
     db.flush()
     print(f"  Locations -> created: {created}, updated: {updated}, unchanged: {unchanged}")
@@ -236,18 +277,10 @@ def upsert_locations(db, locations):
 
 def upsert_matrix(db, code_to_location, distances, durations, dry_run):
     pairs = set(distances.keys()) & set(durations.keys())
-    missing_distance = set(durations.keys()) - set(distances.keys())
-    missing_duration = set(distances.keys()) - set(durations.keys())
-
-    if missing_distance:
-        print(f"  [warn] {len(missing_distance)} pairs have duration but no distance - skipped")
-    if missing_duration:
-        print(f"  [warn] {len(missing_duration)} pairs have distance but no duration - skipped")
-
     created, updated, skipped_unknown = 0, 0, 0
     touched_codes = set()
 
-    for i, (code1, code2) in enumerate(pairs, start=1):
+    for code1, code2 in pairs:
         loc1 = code_to_location.get(code1)
         loc2 = code_to_location.get(code2)
         if not loc1 or not loc2:
@@ -261,34 +294,38 @@ def upsert_matrix(db, code_to_location, distances, durations, dry_run):
         )
         dist_val = distances[(code1, code2)]
         dur_val = durations[(code1, code2)]
-
         touched_codes.add(code1)
         touched_codes.add(code2)
 
         if dry_run:
             continue
 
-        existing = db.query(MatrixMaster).filter(
-            MatrixMaster.shop_id_1 == sid1,
-            MatrixMaster.shop_id_2 == sid2,
-        ).first()
-
+        existing = (
+            db.query(DistanceMatrix)
+            .filter(
+                DistanceMatrix.location_id_1 == sid1,
+                DistanceMatrix.location_id_2 == sid2,
+            )
+            .first()
+        )
         if existing:
             existing.distance_km = dist_val
             existing.time_minutes = dur_val
             existing.last_calculated = datetime.utcnow()
             updated += 1
         else:
-            db.add(MatrixMaster(
-                shop_id_1=sid1,
-                shop_id_2=sid2,
-                shop_code_1=scode1,
-                shop_code_2=scode2,
-                distance_km=dist_val,
-                time_minutes=dur_val,
-                coords=None,
-                last_calculated=datetime.utcnow(),
-            ))
+            db.add(
+                DistanceMatrix(
+                    location_id_1=sid1,
+                    location_id_2=sid2,
+                    location_code_1=scode1,
+                    location_code_2=scode2,
+                    distance_km=dist_val,
+                    time_minutes=dur_val,
+                    coords=None,
+                    last_calculated=datetime.utcnow(),
+                )
+            )
             created += 1
 
         if not dry_run and (created + updated) % BATCH_COMMIT_EVERY == 0:
@@ -297,26 +334,20 @@ def upsert_matrix(db, code_to_location, distances, durations, dry_run):
     print(
         f"  Matrix rows -> matched pairs: {len(pairs)}, "
         f"created: {created}, updated: {updated}, "
-        f"skipped (code not in {MASTER_GPS_FILE}): {skipped_unknown}"
+        f"skipped (unknown code): {skipped_unknown}"
     )
-
     return touched_codes
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--csv-dir", type=Path, default=DEFAULT_CSV_DIR)
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Parse and preview everything, but don't write to the DB",
-    )
+    parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
     gps_path = args.csv_dir / MASTER_GPS_FILE
     dist_path = args.csv_dir / DISTANCE_FILE
     dur_path = args.csv_dir / DURATION_FILE
-
     for p in (gps_path, dist_path, dur_path):
         if not p.exists():
             print(f"ERROR: file not found: {p}", file=sys.stderr)
@@ -327,8 +358,6 @@ def main():
     print(f"Reading {gps_path.name} ...")
     locations = load_locations(gps_path)
     print(f"  Parsed {len(locations)} location rows")
-    if locations:
-        print(f"  Sample row: {locations[0]}")
 
     print(f"\nReading {dist_path.name} ...")
     distances = load_matrix_csv(dist_path)
@@ -339,40 +368,32 @@ def main():
     print(f"  Parsed {len(durations)} duration pairs")
 
     if args.dry_run:
-        sample_pairs = list((set(distances) & set(durations)))[:5]
-        print("\nSample merged pairs (code1, code2) -> (distance_km, time_minutes):")
-        for k in sample_pairs:
-            print(f"  {k} -> ({distances[k]}, {durations[k]})")
-        print(
-            "\nNo database writes performed (dry run). "
-            "Re-run without --dry-run once this looks correct."
-        )
+        print("\nNo database writes performed (dry run).")
         return
 
     db = SessionLocal()
     try:
-        print("\nUpserting locations into GPSMaster ...")
+        print("\nUpserting locations ...")
         code_to_location = upsert_locations(db, locations)
         db.commit()
 
-        print("\nUpserting distances/durations into MatrixMaster ...")
-        touched_codes = upsert_matrix(db, code_to_location, distances, durations, dry_run=False)
+        print("\nUpserting matrix ...")
+        touched = upsert_matrix(db, code_to_location, distances, durations, dry_run=False)
         db.commit()
 
-        print("\nMarking touched locations as matrix_status='updated' ...")
+        print("\nMarking touched locations as updated ...")
         count = 0
-        for code in touched_codes:
+        for code in touched:
             loc = code_to_location.get(code)
-            if loc and loc.matrix_status != "updated":
-                loc.matrix_status = "updated"
+            if loc and loc.matrix_status != MatrixStatus.UPDATED:
+                loc.matrix_status = MatrixStatus.UPDATED
                 count += 1
         db.commit()
         print(f"  Updated status for {count} locations")
-
         print("\nDone.")
     except Exception as e:
         db.rollback()
-        print(f"\nERROR - rolled back all changes: {e}", file=sys.stderr)
+        print(f"\nERROR - rolled back: {e}", file=sys.stderr)
         raise
     finally:
         db.close()

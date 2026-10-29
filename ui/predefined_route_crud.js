@@ -1,6 +1,6 @@
 /* ==================== PRE-DEFINED ROUTE CRUD ==================== */
 let routeShops = [];
-let selectedRouteShops = []; // [{shop_id, shop_code, location, address, latitude, longitude}]
+let selectedRouteShops = []; // [{location_id, shop_code, location, address, latitude, longitude}]
 
 async function loadRouteShops() {
   // Always load fresh data to ensure it's up-to-date
@@ -11,7 +11,7 @@ async function loadRouteShops() {
     console.log("Loaded shops for routes:", routeShops.length);
     setupRouteShopAutocomplete();
   } catch (err) {
-    showToast("Failed to load shops: " + err.message, "danger");
+    showToast("Failed to load locations: " + err.message, "danger");
   }
 }
 
@@ -33,7 +33,7 @@ function setupRouteShopAutocomplete() {
   const options = routeShops
     .map(
       (s) => `
-      <option value="${s.shop_code}">${s.location || ""} - ${
+      <option value="${s.location_code}">${s.location_name || ""} - ${
         s.address || ""
       } (${s.district || ""})</option>
     `
@@ -49,14 +49,14 @@ function setupRouteShopAutocomplete() {
     const val = newInput.value.toLowerCase();
     const filtered = routeShops.filter(
       (s) =>
-        s.shop_code.toLowerCase().includes(val) ||
-        (s.location && s.location.toLowerCase().includes(val)) ||
+        s.location_code.toLowerCase().includes(val) ||
+        (s.location_name && s.location_name.toLowerCase().includes(val)) ||
         (s.address && s.address.toLowerCase().includes(val))
     );
     list.innerHTML = filtered
       .map(
         (s) => `
-        <option value="${s.shop_code}">${s.location || ""} - ${
+        <option value="${s.location_code}">${s.location_name || ""} - ${
           s.address || ""
         } (${s.district || ""})</option>
       `
@@ -87,7 +87,7 @@ function setupRouteShopAutocomplete() {
         list.innerHTML = routeShops
           .map(
             (s) => `
-            <option value="${s.shop_code}">${s.location || ""} - ${
+            <option value="${s.location_code}">${s.location_name || ""} - ${
               s.address || ""
             } (${s.district || ""})</option>
           `
@@ -99,7 +99,7 @@ function setupRouteShopAutocomplete() {
 }
 
 function validateRouteShop(code) {
-  const shop = routeShops.find((s) => s.shop_code === code);
+  const shop = routeShops.find((s) => s.location_code === code);
   const details = document.getElementById("routeShopDetails");
   if (shop) {
     details.innerHTML = `<small class="text-success"><i class="bi bi-check-circle-fill"></i> ${shop.location} - ${shop.address}</small>`;
@@ -115,13 +115,13 @@ function validateRouteShop(code) {
 }
 
 function addShopToRouteList(shop) {
-  if (selectedRouteShops.some((s) => s.shop_id === shop.id)) {
+  if (selectedRouteShops.some((s) => s.location_id === shop.id)) {
     showToast("Shop already added", "warning");
     return;
   }
   selectedRouteShops.push({
-    shop_id: shop.id,
-    shop_code: shop.shop_code,
+    location_id: shop.id,
+    shop_code: shop.location_code,
     location: shop.location || "",
     address: shop.address || "",
     latitude: shop.latitude,
@@ -140,7 +140,7 @@ function renderRouteShopList() {
     .map(
       (s, i) => `
     <li class="list-group-item d-flex justify-content-between align-items-center" draggable="true" data-index="${i}">
-      <span><strong>${s.shop_code}</strong> - ${s.location} (${s.latitude}, ${s.longitude})</span>
+      <span><strong>${s.location_code}</strong> - ${s.location_name} (${s.latitude}, ${s.longitude})</span>
       <button type="button" class="btn btn-sm btn-danger remove-shop" data-index="${i}">×</button>
     </li>
   `
@@ -201,9 +201,9 @@ async function openPredefinedRouteModal(route = null) {
     document.getElementById("routeNameInput").value = route.name;
     document.getElementById("predefinedRouteModalTitle").textContent =
       "Edit Route";
-    selectedRouteShops = route.shops.map((s) => ({
-      shop_id: s.shop_id,
-      shop_code: s.shop.shop_code,
+    selectedRouteShops = route.locations.map((s) => ({
+      location_id: s.location_id,
+      shop_code: s.shop.location_code,
       location: s.shop.location || "",
       address: s.shop.address || "",
       latitude: s.shop.latitude,
@@ -237,7 +237,7 @@ document
 
     const payload = {
       name,
-      shops: selectedRouteShops.map((s) => ({ shop_id: s.shop_id })),
+      locations: selectedRouteShops.map((s) => ({ location_id: s.location_id })),
     };
 
     try {
@@ -282,22 +282,22 @@ async function fetchPredefinedRoutes() {
       routes.map(async (route) => {
         try {
           const enrichedShops = await Promise.all(
-            route.shops.map(async (shopEntry) => {
+            route.locations.map(async (shopEntry) => {
               try {
                 const shopRes = await fetch(
-                  TMS_API.url(`/location/customer/code/${shopEntry.shop.shop_code}`)
+                  TMS_API.url(`/location/customer/code/${shopEntry.location.location_code}`)
                 );
                 if (shopRes.ok) {
                   const fullShopData = await shopRes.json();
                   return {
                     ...shopEntry,
-                    shop: { ...shopEntry.shop, ...fullShopData },
+                    shop: { ...shopEntry.location, ...fullShopData },
                   };
                 }
               } catch (err) {
                 console.error(
                   "Failed to enrich shop:",
-                  shopEntry.shop.shop_code,
+                  shopEntry.location.location_code,
                   err
                 );
               }
@@ -307,7 +307,7 @@ async function fetchPredefinedRoutes() {
 
           return {
             ...route,
-            shops: enrichedShops,
+            locations: enrichedShops,
           };
         } catch (err) {
           console.error("Failed to enrich route:", err);
@@ -345,7 +345,7 @@ function renderPredefinedRoutes(routes) {
               .map(
                 (s) => `
               <li class="mb-2">
-                <strong>${s.shop.shop_code}</strong> - 
+                <strong>${s.shop.location_code}</strong> - 
                 <span class="text-primary">${s.shop.location || ""}</span>
                 <span class="badge bg-secondary ms-1">${
                   s.shop.brand || ""
