@@ -411,7 +411,7 @@ class DistanceMatrixManager:
         expected_distances = (total_shops * (total_shops - 1)) / 2 if total_shops > 0 else 0
         
         return {
-            'total_shops_in_matrix': total_shops,
+            'total_locations_in_matrix': total_shops,
             'pending_updates': pending_shops,
             'total_distances_stored': total_distances,
             'expected_distances': int(expected_distances),

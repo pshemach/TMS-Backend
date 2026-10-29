@@ -6,7 +6,7 @@ from src.infrastructure.database import models
 from src.matrix.manager import DistanceMatrixManager
 
 
-def get_pending_shops(db: Session):
+def get_pending_locations(db: Session):
     return (
         db.query(models.GPSMaster)
         .filter(
@@ -16,6 +16,10 @@ def get_pending_shops(db: Session):
         .order_by(models.GPSMaster.id)
         .all()
     )
+
+
+# Back-compat alias
+get_pending_shops = get_pending_locations
 
 
 def get_stats(db: Session) -> dict:

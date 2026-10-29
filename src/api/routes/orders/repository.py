@@ -11,7 +11,7 @@ def create_order(request: schemas.OrderCreate, db: Session) -> models.Order:
     # Validate shop exists
     shop = db.query(models.GPSMaster).filter(models.GPSMaster.id == request.shop_id).first()
     if not shop:
-        raise HTTPException(status_code=404, detail=f"Shop {request.shop_id} not found")
+        raise HTTPException(status_code=404, detail=f"Customer {request.shop_id} not found")
 
     # Validate unique order_id
     if db.query(models.Order).filter(models.Order.order_id == request.order_id).first():
@@ -84,7 +84,7 @@ def update_order(order_db_id: int, request: schemas.OrderUpdate, db: Session) ->
     if request.shop_id and request.shop_id != order.shop_id:
         shop = db.query(models.GPSMaster).filter(models.GPSMaster.id == request.shop_id).first()
         if not shop:
-            raise HTTPException(404, f"Shop {request.shop_id} not found")
+            raise HTTPException(404, f"Customer {request.shop_id} not found")
         order.shop_id = request.shop_id
 
     # === Simple fields ===
@@ -139,7 +139,7 @@ def update_order_oid(order_db_id: str, request: schemas.OrderUpdate, db: Session
     if request.shop_id and request.shop_id != order.shop_id:
         shop = db.query(models.GPSMaster).filter(models.GPSMaster.id == request.shop_id).first()
         if not shop:
-            raise HTTPException(404, f"Shop {request.shop_id} not found")
+            raise HTTPException(404, f"Customer {request.shop_id} not found")
         order.shop_id = request.shop_id
 
     # === Simple fields ===

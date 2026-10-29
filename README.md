@@ -118,7 +118,7 @@ Settings are read in `src/infrastructure/config.py`. Copy `.env.example` to `.en
 | `CLIENT` | Subfolder under `data/` | `common` |
 | `DATA_FOLDER` | Root data directory | `data` |
 | `MASTER_FOLDER` | GPS and matrix files for the client | `master` |
-| `MASTER_GPS` | Shop GPS filename | `master_gps.csv` |
+| `MASTER_GPS` | Location GPS filename | `master_gps.csv` |
 | `DISTANCE_MATRIX` | Distance matrix filename | `distance_matrix.csv` |
 | `DURATION_MATRIX` | Duration matrix filename | `duration_matrix.csv` |
 | `OUTPUT_FOLDER` | Solver and map output | `outputs` |

@@ -12,7 +12,7 @@ from src.api.routes.customers.repository import shop_coords, get_shop   # <-- re
 def _get_shop(shop_id: int, db: Session):
     shop = db.query(models.GPSMaster).filter(models.GPSMaster.id == shop_id).first()
     if not shop:
-        raise HTTPException(status_code=404, detail=f"Shop {shop_id} not found")
+        raise HTTPException(status_code=404, detail=f"Customer {shop_id} not found")
     return shop
 
 # --------------------------------------------------------------

@@ -16,7 +16,7 @@ def create_predefined_route(request: schemas.PredefinedRouteCreate, db: Session)
     existing_ids = {s[0] for s in existing_shops}
     missing = set(shop_ids) - existing_ids
     if missing:
-        raise HTTPException(status_code=404, detail=f"Shops not found: {missing}")
+        raise HTTPException(status_code=404, detail=f"Customers not found: {missing}")
 
     # Store as list of dicts
     shops_json = [{"shop_id": s.shop_id} for s in request.shops]
@@ -58,7 +58,7 @@ def update_predefined_route(route_id: int, request: schemas.PredefinedRouteUpdat
         existing_ids = {s[0] for s in existing_shops}
         missing = set(shop_ids) - existing_ids
         if missing:
-            raise HTTPException(status_code=404, detail=f"Shops not found: {missing}")
+            raise HTTPException(status_code=404, detail=f"Customers not found: {missing}")
         route.shops = [{"shop_id": s.shop_id} for s in request.shops]
 
     db.commit()
