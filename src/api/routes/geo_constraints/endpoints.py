@@ -7,10 +7,7 @@ from src.api.routes.geo_constraints import repository as ops
 from src.api.routes.shops.repository import shop_coords
 from src.api.routes.geo_constraints import schemas
 
-
-router = APIRouter(prefix="/geo-constraint", tags=["geo-constraint"])
-
-
+router = APIRouter(tags=["geo-constraint"])
 
 def _enrich(geo: models.GeoConstraint) -> schemas.GeoConstraintResponse:
     vehicle_data = None
@@ -24,14 +21,12 @@ def _enrich(geo: models.GeoConstraint) -> schemas.GeoConstraintResponse:
         vehicle=vehicle_data,
     )
 
-
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=schemas.GeoConstraintResponse)
+@router.post("/geo-constraint", status_code=status.HTTP_201_CREATED, response_model=schemas.GeoConstraintResponse)
 def create(request: schemas.GeoConstraintCreate, db: Session = Depends(get_db)):
     geo = ops.create_geo_constraint(request, db)
     return _enrich(geo)
 
-
-@router.get("/", response_model=List[schemas.GeoConstraintResponse])
+@router.get("/geo-constraint", response_model=List[schemas.GeoConstraintResponse])
 def list_all(
     vehicle_id: Optional[int] = None,
     fleet_id: Optional[int] = None,
@@ -40,24 +35,21 @@ def list_all(
     geos = ops.all_geo_constraints(vehicle_id=vehicle_id, fleet_id=fleet_id, db=db)
     return [_enrich(g) for g in geos]
 
-
-@router.get("/{id}", response_model=schemas.GeoConstraintResponse)
+@router.get("/geo-constraint/{id}", response_model=schemas.GeoConstraintResponse)
 def get_one(id: int, db: Session = Depends(get_db)):
     geo = ops.get_geo_constraint(id, db)
     return _enrich(geo)
 
-
-@router.put("/{id}", response_model=schemas.GeoConstraintResponse)
+@router.put("/geo-constraint/{id}", response_model=schemas.GeoConstraintResponse)
 def update(id: int, request: schemas.GeoConstraintUpdate, db: Session = Depends(get_db)):
     geo = ops.update_geo_constraint(id, request, db)
     return _enrich(geo)
 
-
-@router.delete("/{id}", status_code=status.HTTP_200_OK)
+@router.delete("/geo-constraint/{id}", status_code=status.HTTP_200_OK)
 def delete(id: int, db: Session = Depends(get_db)):
     return ops.delete_geo_constraint(id, db)
 
-@router.get("/by-vehicle/{vehicle_id}", response_model=List[schemas.GeoConstraintResponse])
+@router.get("/geo-constraint/by-vehicle/{vehicle_id}", response_model=List[schemas.GeoConstraintResponse])
 def get_by_vehicle(vehicle_id: int, db: Session = Depends(get_db)):
     geos = ops.all_geo_constraints(vehicle_id=vehicle_id, db=db)
     return [_enrich(g) for g in geos]

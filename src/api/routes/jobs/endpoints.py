@@ -9,8 +9,7 @@ from src.api.routes.shops.repository import shop_coords
 from src.api.routes.orders.repository import mark_orders_completed
 from src.api.routes.jobs import repository as job_curd
 
-
-router = APIRouter(prefix="/job", tags=["job"])
+router = APIRouter(tags=["job"])
 
 # Backwards compatibility: some code expects Vehicles.vehicle_code. Map it to vehicle_name if missing.
 if not hasattr(models.Vehicles, "vehicle_code"):
@@ -18,8 +17,31 @@ if not hasattr(models.Vehicles, "vehicle_code"):
         return getattr(self, "vehicle_name", None)
     setattr(models.Vehicles, "vehicle_code", property(_vehicle_code))
 
-# === 1. Get Job Summary ===
-@router.get("/{job_id}", response_model=schemas.JobResponse)
+# === 1. List All Jobs (declare before /job/{id}) ===
+@router.get("/job", response_model=List[schemas.JobSummary])
+def list_jobs(
+    status: Optional[str] = None,
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
+    db: Session = Depends(get_db)
+):
+    q = db.query(models.Job).options(joinedload(models.Job.routes))
+    if status:
+        try:
+            q = q.filter(models.Job.status == models.JobStatus(status))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid job status")
+    if date_from:
+        q = q.filter(models.Job.day >= date_from)
+    if date_to:
+        q = q.filter(models.Job.day <= date_to)
+
+    jobs = q.order_by(models.Job.created_at.desc()).all()
+    return [_summarize_job(j) for j in jobs]
+
+
+# === 2. Get Job Summary ===
+@router.get("/job/{job_id}", response_model=schemas.JobResponse)
 def get_job(job_id: int, db: Session = Depends(get_db)):
     job = db.query(models.Job).options(
         joinedload(models.Job.routes).joinedload(models.JobRoute.stops).joinedload(models.JobStop.shop)
@@ -30,29 +52,8 @@ def get_job(job_id: int, db: Session = Depends(get_db)):
 
     return _enrich_job(job)
 
-
-# === 2. List All Jobs ===
-@router.get("/", response_model=List[schemas.JobSummary])
-def list_jobs(
-    status: Optional[str] = None,
-    date_from: Optional[date] = None,
-    date_to: Optional[date] = None,
-    db: Session = Depends(get_db)
-):
-    q = db.query(models.Job)
-    if status:
-        q = q.filter(models.Job.status == status)
-    if date_from:
-        q = q.filter(models.Job.day >= date_from)
-    if date_to:
-        q = q.filter(models.Job.day <= date_to)
-
-    jobs = q.order_by(models.Job.created_at.desc()).all()
-    return [_summarize_job(j) for j in jobs]
-
-
 # === 3. Get Visits for Vehicle ===
-@router.get("/vehicle/{vehicle_id}/visits", response_model=List[schemas.VehicleVisit])
+@router.get("/job/vehicle/{vehicle_id}/visits", response_model=List[schemas.VehicleVisit])
 def get_vehicle_visits(
     vehicle_id: int,
     job_id: Optional[int] = None,
@@ -72,9 +73,8 @@ def get_vehicle_visits(
 
     return [_enrich_visit(v) for v in visits]
 
-
 # === 4. Get Full Route for Vehicle ===
-@router.get("/vehicle/{vehicle_id}/route", response_model=schemas.VehicleRoute)
+@router.get("/job/vehicle/{vehicle_id}/route", response_model=schemas.VehicleRoute)
 def get_vehicle_route(
     vehicle_id: int,
     job_id: Optional[int] = None,
@@ -95,9 +95,8 @@ def get_vehicle_route(
 
     return _enrich_route(route)
 
-
 # === 5. Get All Routes in Job ===
-@router.get("/{job_id}/routes", response_model=List[schemas.VehicleRoute])
+@router.get("/job/{job_id}/routes", response_model=List[schemas.VehicleRoute])
 def get_job_routes(job_id: int, db: Session = Depends(get_db)):
     job = db.query(models.Job).filter(models.Job.id == job_id).first()
     if not job:
@@ -112,8 +111,7 @@ def get_job_routes(job_id: int, db: Session = Depends(get_db)):
 
     return [_enrich_route(r) for r in routes]
 
-
-@router.delete("/{job_id}")
+@router.delete("/job/{job_id}")
 def delete_job_endpoint(
     job_id: int = Path(..., description="Job ID to delete"),
     db: Session = Depends(get_db)
@@ -131,8 +129,7 @@ def delete_job_endpoint(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-
-@router.patch("/{job_id}/complete")
+@router.patch("/job/{job_id}/complete")
 def mark_job_complete(
     job_id: int = Path(..., description="Job ID to complete"),
     db: Session = Depends(get_db)
@@ -149,8 +146,7 @@ def mark_job_complete(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-
-@router.patch("/{job_id}/cancel")
+@router.patch("/job/{job_id}/cancel")
 def mark_job_canceled(
     job_id: int = Path(..., description="Job ID to cancel"),
     db: Session = Depends(get_db)
@@ -181,7 +177,6 @@ def _enrich_job(job: models.Job) -> schemas.JobResponse:
         routes=routes
     )
 
-
 # === Helper: Summarize Job ===
 def _summarize_job(job: models.Job) -> schemas.JobSummary:
     return schemas.JobSummary(
@@ -192,7 +187,6 @@ def _summarize_job(job: models.Job) -> schemas.JobSummary:
         created_at=job.created_at,
         route_count=len(job.routes)
     )
-
 
 # === Helper: Enrich Route ===
 def _enrich_route(route: models.JobRoute) -> schemas.VehicleRoute:
@@ -207,7 +201,6 @@ def _enrich_route(route: models.JobRoute) -> schemas.VehicleRoute:
         folium_html=route.folium_html,
         stops=stops
     )
-
 
 # === Helper: Enrich Stop ===
 def _enrich_stop(stop: models.JobStop) -> schemas.JobStopDetail:
@@ -224,7 +217,6 @@ def _enrich_stop(stop: models.JobStop) -> schemas.JobStopDetail:
         shop_address=shop.address  
     )
 
-
 # === Helper: Enrich Visit (for driver) ===
 def _enrich_visit(stop: models.JobStop) -> schemas.VehicleVisit:
     return schemas.VehicleVisit(
@@ -233,7 +225,6 @@ def _enrich_visit(stop: models.JobStop) -> schemas.VehicleVisit:
         shop_code=stop.shop.shop_code,
         shop_coords=shop_coords(stop.shop)
     )
-
 
 # === Helper: Summarize Route ===
 def _summarize_route(route: models.JobRoute) -> schemas.RouteSummary:

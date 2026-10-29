@@ -6,8 +6,7 @@ from src.api.routes.fleets import schemas
 from src.infrastructure.database import models
 from src.api.deps import get_db
 
-
-router = APIRouter(prefix='/fleet', tags=['fleet'])
+router = APIRouter(tags=['fleet'])
 
 # === Helper: Enrich Fleet ===
 def _enrich_fleet(fleet: models.Fleets) -> schemas.FleetResponse:
@@ -26,14 +25,9 @@ def _enrich_fleet(fleet: models.Fleets) -> schemas.FleetResponse:
     
 # === Helper: Enrich Vehicle ===
 def _enrich_vehicle(vehicle: models.Vehicles) -> schemas.VehicleResponse:
-    return schemas.VehicleResponse(
-        id=vehicle.id,
-        vehicle_name=vehicle.vehicle_name,
-        type=vehicle.type,
-        status=vehicle.status,
-        location=vehicle.location,
-        fleet_id=vehicle.fleet_id,
-        constraint=schemas.VehicleConstrainResponse(
+    constraint = None
+    if vehicle.constraint is not None:
+        constraint = schemas.VehicleConstrainResponse(
             id=vehicle.constraint.id,
             fleet=vehicle.constraint.fleet,
             vehicle_id=vehicle.constraint.vehicle_id,
@@ -44,17 +38,23 @@ def _enrich_vehicle(vehicle: models.Vehicles) -> schemas.VehicleResponse:
             volume=vehicle.constraint.volume,
             time_window=vehicle.constraint.time_window,
             max_distance=vehicle.constraint.max_distance,
-            max_visits=vehicle.constraint.max_visits 
+            max_visits=vehicle.constraint.max_visits,
         )
+    return schemas.VehicleResponse(
+        id=vehicle.id,
+        vehicle_name=vehicle.vehicle_name,
+        type=vehicle.type,
+        status=vehicle.status,
+        location=vehicle.location,
+        fleet_id=vehicle.fleet_id,
+        constraint=constraint,
     )
-    
-@router.get('/', status_code=status.HTTP_200_OK, response_model=List[schemas.FleetResponse])
+
+@router.get("/fleet", status_code=status.HTTP_200_OK, response_model=List[schemas.FleetResponse])
 def get_all_fleet(db: Session = Depends(get_db)):
     """Retrieve all fleets with their vehicles."""
     try:
-        fleets = fleet_curd.all_fleets(db)
-        if not fleets:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No fleets available in database")
+        fleets = fleet_curd.all_fleets(db) or []
         return [_enrich_fleet(fleet) for fleet in fleets]
     except HTTPException as e:
         raise e
@@ -65,7 +65,7 @@ def get_all_fleet(db: Session = Depends(get_db)):
             detail=f"Unable to load fleets, error: {e}"
         )
 
-@router.get('/{id}', status_code=status.HTTP_200_OK, response_model=schemas.FleetResponse)
+@router.get('/fleet/{id}', status_code=status.HTTP_200_OK, response_model=schemas.FleetResponse)
 def get_fleet(id: int, db: Session=Depends(get_db)):
     """Retrieve a fleet by ID with its vehicles."""
     try: 
@@ -81,7 +81,7 @@ def get_fleet(id: int, db: Session=Depends(get_db)):
             detail=f"Unable to load fleet {id}, error: {e}"
             )
 
-@router.post('/', status_code=status.HTTP_201_CREATED, response_model=schemas.FleetResponse)
+@router.post("/fleet", status_code=status.HTTP_201_CREATED, response_model=schemas.FleetResponse)
 def create_fleet(request: schemas.FleetRequest, db: Session=Depends(get_db)):
     """Create new fleet"""
     try:
@@ -96,7 +96,7 @@ def create_fleet(request: schemas.FleetRequest, db: Session=Depends(get_db)):
             detail=f"Unable to create fleet, error: {e}"
         )
 
-@router.delete('/{id}', status_code=status.HTTP_200_OK)
+@router.delete('/fleet/{id}', status_code=status.HTTP_200_OK)
 def delete_fleet(id: int, db: Session = Depends(get_db)):
     """Delete a fleet and its associated vehicles."""
     try:
@@ -111,7 +111,7 @@ def delete_fleet(id: int, db: Session = Depends(get_db)):
             detail=f"Unable to delete fleet {id}, error: {e}"
         )
 
-@router.put('/{id}', status_code=status.HTTP_202_ACCEPTED, response_model=schemas.FleetResponse)
+@router.put('/fleet/{id}', status_code=status.HTTP_202_ACCEPTED, response_model=schemas.FleetResponse)
 def update_fleet(id: int, request: schemas.FleetRequest, db: Session = Depends(get_db)):
     """Update a fleet's metadata."""
     try:

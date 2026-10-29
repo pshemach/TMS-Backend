@@ -10,7 +10,6 @@ from src.infrastructure.logging import logging
 
 router = APIRouter(prefix="/matrix", tags=["matrix"])
 
-
 def _run_matrix_sync_task(max_workers: int = 10) -> None:
     """Background worker — opens its own DB session."""
     db = SessionLocal()
@@ -23,12 +22,10 @@ def _run_matrix_sync_task(max_workers: int = 10) -> None:
     finally:
         db.close()
 
-
 @router.get("/stats", response_model=schemas.MatrixStatsResponse)
 def matrix_stats(db: Session = Depends(get_db)):
     """Return current distance-matrix coverage statistics."""
     return repository.get_stats(db)
-
 
 @router.get("/pending", response_model=schemas.PendingShopsResponse)
 def matrix_pending(db: Session = Depends(get_db)):
@@ -47,7 +44,6 @@ def matrix_pending(db: Session = Depends(get_db)):
             for s in shops
         ],
     )
-
 
 @router.post(
     "/sync",

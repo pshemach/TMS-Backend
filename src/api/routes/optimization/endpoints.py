@@ -8,10 +8,10 @@ from src.api.routes.optimization import schemas
 from src.vrp.controller import run_optimization_task
 from src.infrastructure.logging import logging
 
-router = APIRouter(prefix="/optimize", tags=["optimization-test"])
+router = APIRouter(tags=["optimization-test"])
 
     
-@router.post("/")
+@router.post("/optimize")
 def run_optimization(request: schemas.OptimizeRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
 
     if not request.vehicles or len(request.vehicles) == 0:

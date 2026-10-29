@@ -6,18 +6,12 @@ from src.infrastructure.database import models
 from src.api.deps import get_db
 from typing import List, Optional
 
-
-router = APIRouter(prefix='/vehicle', tags=['vehicle'])
+router = APIRouter(tags=['vehicle'])
 
 def _enrich_vehicle(vehicle: models.Vehicles) -> schemas.VehicleResponse:
-    return schemas.VehicleResponse(
-        id=vehicle.id,
-        vehicle_name=vehicle.vehicle_name,
-        type=vehicle.type,
-        status=vehicle.status,
-        location=vehicle.location,
-        fleet_id=vehicle.fleet_id,
-        constraint=schemas.VehicleConstrainResponse(
+    constraint = None
+    if vehicle.constraint is not None:
+        constraint = schemas.VehicleConstrainResponse(
             id=vehicle.constraint.id,
             fleet=vehicle.constraint.fleet,
             vehicle_id=vehicle.constraint.vehicle_id,
@@ -28,19 +22,25 @@ def _enrich_vehicle(vehicle: models.Vehicles) -> schemas.VehicleResponse:
             volume=vehicle.constraint.volume,
             time_window=vehicle.constraint.time_window,
             max_distance=vehicle.constraint.max_distance,
-            max_visits=vehicle.constraint.max_visits 
+            max_visits=vehicle.constraint.max_visits,
         )
+    return schemas.VehicleResponse(
+        id=vehicle.id,
+        vehicle_name=vehicle.vehicle_name,
+        type=vehicle.type,
+        status=vehicle.status,
+        location=vehicle.location,
+        fleet_id=vehicle.fleet_id,
+        constraint=constraint,
     )
 
-@router.get('/', status_code=status.HTTP_200_OK, response_model=List[schemas.VehicleResponse])
+@router.get("/vehicle", status_code=status.HTTP_200_OK, response_model=List[schemas.VehicleResponse])
 def get_all_vehicles(fleet_id: Optional[int] = None, db: Session = Depends(get_db)):
     """
     Retrieve all vehicles, optionally filtered by fleet_id.
     """
     try:
-        vehicles = vehicle_crud.get_all_vehicles(fleet_id=fleet_id, db=db)
-        if not vehicles:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vehicles are not found")
+        vehicles = vehicle_crud.get_all_vehicles(fleet_id=fleet_id, db=db) or []
         return [_enrich_vehicle(vehicle) for vehicle in vehicles]
     except HTTPException as e:
         raise e
@@ -51,7 +51,7 @@ def get_all_vehicles(fleet_id: Optional[int] = None, db: Session = Depends(get_d
             detail=f"Unable to load vehicles, error: {e}"
         )
 
-@router.get('/{id}', status_code=status.HTTP_200_OK, response_model=schemas.VehicleResponse)
+@router.get('/vehicle/{id}', status_code=status.HTTP_200_OK, response_model=schemas.VehicleResponse)
 def get_vehicle(id: int, db: Session = Depends(get_db)):
     """
     Retrieve a vehicle by ID.
@@ -73,7 +73,7 @@ def get_vehicle(id: int, db: Session = Depends(get_db)):
             detail=f"Unable to load vehicle {id}, error: {e}"
         )
 
-@router.post('/{fleet_id}', status_code=status.HTTP_201_CREATED, response_model=schemas.VehicleResponse)
+@router.post('/vehicle/{fleet_id}', status_code=status.HTTP_201_CREATED, response_model=schemas.VehicleResponse)
 def create_vehicle(fleet_id: int, request: schemas.VehicleRequest, db: Session = Depends(get_db)):
     """
     Create a new vehicle in the specified fleet with default constraints.
@@ -90,7 +90,7 @@ def create_vehicle(fleet_id: int, request: schemas.VehicleRequest, db: Session =
             detail=f"Unable to create vehicle, error: {e}"
         )
 
-@router.put('/{id}', status_code=status.HTTP_202_ACCEPTED, response_model=schemas.VehicleResponse)
+@router.put('/vehicle/{id}', status_code=status.HTTP_202_ACCEPTED, response_model=schemas.VehicleResponse)
 def update_vehicle(id: int, request: schemas.VehicleRequest, db: Session = Depends(get_db)):
     """
     Update a vehicle's details and adjust fleet vehicle counts if status changes.
@@ -107,7 +107,7 @@ def update_vehicle(id: int, request: schemas.VehicleRequest, db: Session = Depen
             detail=f"Unable to update vehicle {id}, error: {e}"
         )
 
-@router.delete('/{id}', status_code=status.HTTP_200_OK)
+@router.delete('/vehicle/{id}', status_code=status.HTTP_200_OK)
 def delete_vehicle(id: int, db: Session = Depends(get_db)):
     """
     Delete a vehicle and update fleet vehicle counts.

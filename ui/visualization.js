@@ -382,15 +382,21 @@
       }
 
       const queryString = params.toString();
-      const url = `${API_BASE}/job/${queryString ? "?" + queryString : ""}`;
+      const url = `${TMS_API.url("/job")}${queryString ? "?" + queryString : ""}`;
 
       console.log("Fetching jobs from:", url);
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: "no-store" });
       console.log("Jobs response status:", res.status);
 
-      if (!res.ok) throw new Error("Failed to load jobs");
+      if (!res.ok) {
+        const detail = await res.text();
+        throw new Error(detail || `Failed to load jobs (${res.status})`);
+      }
 
       allJobs = await res.json();
+      if (!Array.isArray(allJobs)) {
+        throw new Error("Unexpected jobs response");
+      }
       console.log("Loaded jobs:", allJobs.length);
 
       renderJobsList();

@@ -1,10 +1,10 @@
-"""FastAPI application factory and router registration."""
+"""FastAPI application — API routers + UI."""
 
 import json
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from src.api.routes.depots.endpoints import router as depots_router
@@ -27,7 +27,7 @@ from src.infrastructure.database.session import engine
 validate()
 ensure_directories()
 
-app = FastAPI(description=f"{'=' * 10} TMS BACKEND API {'=' * 10}")
+app = FastAPI(title="TMS Backend", description="Transport Management System API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -39,6 +39,7 @@ app.add_middleware(
 
 models.Base.metadata.create_all(bind=engine)
 
+# --- API ---
 app.include_router(shops_router)
 app.include_router(depots_router)
 app.include_router(fleets_router)
@@ -55,12 +56,17 @@ app.include_router(matrix_router)
 
 @app.get("/runtime-config.js", include_in_schema=False)
 def runtime_config_js():
-    """Inject browser API base from server env (empty = same-origin)."""
-    body = (
-        f"window.__TMS_API_BASE__ = {json.dumps(config.API_PUBLIC_URL)};\n"
+    """Browser config from env. Empty API_PUBLIC_URL = same-origin."""
+    return Response(
+        content=f"window.__TMS_API_BASE__ = {json.dumps(config.API_PUBLIC_URL)};\n",
+        media_type="application/javascript",
     )
-    return Response(content=body, media_type="application/javascript")
 
 
-# Serve UI last so API routes keep priority. `/` opens index.html.
-app.mount("/", StaticFiles(directory=str(UI_DIR), html=True), name="ui")
+@app.get("/", include_in_schema=False)
+def ui_index():
+    return FileResponse(UI_DIR / "index.html")
+
+
+# UI assets at /static/* — isolated from API paths (/fleet, /order, …)
+app.mount("/static", StaticFiles(directory=str(UI_DIR)), name="static")

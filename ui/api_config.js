@@ -1,8 +1,8 @@
 /**
- * Shared API base for the TMS UI.
+ * TMS UI API helper.
  *
- * window.__TMS_API_BASE__ is injected by /runtime-config.js from server config.
- * Empty string = same origin (correct when UI is served by FastAPI).
+ * __TMS_API_BASE__ comes from /runtime-config.js (server .env).
+ * Leave empty for same-origin requests (/fleet, /order, …).
  */
 (function (global) {
   const raw = global.__TMS_API_BASE__;

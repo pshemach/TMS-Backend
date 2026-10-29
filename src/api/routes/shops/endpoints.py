@@ -5,7 +5,6 @@ from src.api.routes.shops import repository as shops_curd
 from src.api.routes.shops import schemas
 from src.api.deps import get_db
 
-
 router = APIRouter(prefix='/master', tags=['master'])
 
 @router.get('/shop', status_code=status.HTTP_200_OK, response_model=List[schemas.ShopResponse])

@@ -438,7 +438,7 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Running...';
 
-        const res = await fetch(TMS_API.url("/optimize/"), {
+        const res = await fetch(TMS_API.url("/optimize"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),

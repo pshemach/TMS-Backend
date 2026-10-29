@@ -44,7 +44,7 @@ function generateOrderId(poDate) {
 // Load Orders
 async function loadOrders() {
   try {
-    let url = ORDER_API_BASE;
+    let url = TMS_API.url("/order");
     const params = new URLSearchParams();
 
     if (orderStatusFilter.value)
@@ -377,7 +377,7 @@ async function createOrder(data) {
 
   delete payload.shop_code;
 
-  const res = await fetch(ORDER_API_BASE, {
+  const res = await fetch(TMS_API.url("/order"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -508,7 +508,7 @@ document.getElementById("orderForm").addEventListener("submit", async (e) => {
   }
 
   const method = orderId ? "PUT" : "POST";
-  const url = orderId ? `${ORDER_API_BASE}/${orderId}` : ORDER_API_BASE;
+  const url = orderId ? `${ORDER_API_BASE}/${orderId}` : TMS_API.url("/order");
 
   try {
     const res = await fetch(url, {
