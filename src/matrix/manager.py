@@ -253,6 +253,8 @@ class DistanceMatrixManager:
     def get_distance(
         self, location_id_1: int, location_id_2: int
     ) -> Tuple[Optional[float], Optional[float]]:
+        if location_id_1 is None or location_id_2 is None:
+            return None, None
         if location_id_1 == location_id_2:
             return 0.0, 0.0
 

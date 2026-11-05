@@ -257,3 +257,22 @@ def test_unknown_job_and_vehicle_route_return_404(client):
     assert client.patch("/job/99999/cancel").status_code == 404
     assert client.get("/job/vehicle/99999/visits").status_code == 404
     assert client.get("/job/vehicle/99999/route").status_code == 404
+
+
+def test_solver_helpers_tolerate_missing_depot_and_none_caps(client, db_session):
+    from src.matrix.manager import DistanceMatrixManager
+    from src.vrp.controller import resolve_depot_id
+    from src.vrp.solver import _safe_max
+
+    assert _safe_max([15, None, 8], 15) == 15
+    assert _safe_max([None], 12) == 12
+    assert _safe_max([], 12) == 12
+
+    mgr = DistanceMatrixManager(db_session)
+    assert mgr.get_distance(None, 1) == (None, None)
+    assert mgr.get_distance(1, None) == (None, None)
+
+    depot = create_depot(client)
+    assert resolve_depot_id(db_session, None) == depot["id"]
+    assert resolve_depot_id(db_session, depot["id"]) == depot["id"]
+

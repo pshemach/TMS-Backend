@@ -5,6 +5,11 @@ from typing import Optional, Union, List, Dict
 from datetime import time
 
 
+def _safe_max(values, default: int) -> int:
+    nums = [int(v) for v in (values or []) if v is not None]
+    return max(nums) if nums else default
+
+
 def _to_minutes(t: Optional[Union[time, str]]) -> Optional[int]:
     """Convert a datetime.time or 'HH:MM[:SS]' string into minutes since midnight.
     Returns None if value cannot be parsed.
@@ -43,7 +48,8 @@ class VRPSolver:
         def transit_cb(f, t):
             fn = manager.IndexToNode(f)
             tn = manager.IndexToNode(t)
-            cost = int(data["matrix"][fn][tn])
+            raw_cost = data["matrix"][fn][tn]
+            cost = 999999 if raw_cost is None else int(raw_cost)
 
             # Apply geo constraints
             if data.get('geo_constrains'):
@@ -78,23 +84,26 @@ class VRPSolver:
             return 0 if node == data["depot"] else 1
         
         count_idx = routing.RegisterUnaryTransitCallback(count_cb)
-        max_visits = max(data.get("max_visits_per_vehicle", [15]))
+        max_visits = _safe_max(data.get("max_visits_per_vehicle"), 15)
         routing.AddDimension(count_idx, 0, max_visits, True, "VisitCount")
         visit_dim = routing.GetDimensionOrDie("VisitCount")
         
+        visits = data.get("max_visits_per_vehicle") or []
         for v in range(data["num_vehicles"]):
-            max_visits_for_vehicle = data.get("max_visits_per_vehicle", [15])[v]
-            visit_dim.CumulVar(routing.End(v)).SetMax(max_visits_for_vehicle)
+            max_visits_for_vehicle = visits[v] if v < len(visits) and visits[v] is not None else 15
+            visit_dim.CumulVar(routing.End(v)).SetMax(int(max_visits_for_vehicle))
         
         # Time windows with order-based constraints
         if data.get("use_time_matrix"):
             self._add_time_dimension(routing, manager, data, vehicles, idx)
         else:
             # Fallback: distance-based dimension
-            routing.AddDimension(idx, 0, int(max(data.get("max_distance_per_vehicle") or [300])), True, "Distance")
+            routing.AddDimension(idx, 0, _safe_max(data.get("max_distance_per_vehicle"), 300), True, "Distance")
             dim = routing.GetDimensionOrDie("Distance")
+            distances = data.get("max_distance_per_vehicle") or []
             for v in range(data["num_vehicles"]):
-                dim.CumulVar(routing.End(v)).SetMax(int(data["max_distance_per_vehicle"][v]))
+                cap = distances[v] if v < len(distances) and distances[v] is not None else 300
+                dim.CumulVar(routing.End(v)).SetMax(int(cap))
         
         # Order group constraints
         self._add_order_group_constraints(routing, manager, data)
@@ -180,14 +189,17 @@ class VRPSolver:
         def dist_cb(f, t):
             fn = manager.IndexToNode(f)
             tn = manager.IndexToNode(t)
-            return int(data["distance_matrix"][fn][tn])
+            raw = data["distance_matrix"][fn][tn]
+            return 999999 if raw is None else int(raw)
         
         dist_idx = routing.RegisterTransitCallback(dist_cb)
-        routing.AddDimension(dist_idx, 0, int(max(data.get("max_distance_per_vehicle") or [300])), True, "Distance")
+        routing.AddDimension(dist_idx, 0, _safe_max(data.get("max_distance_per_vehicle"), 300), True, "Distance")
         dist_dim = routing.GetDimensionOrDie("Distance")
         
+        distances = data.get("max_distance_per_vehicle") or []
         for v in range(data["num_vehicles"]):
-            dist_dim.CumulVar(routing.End(v)).SetMax(int(data["max_distance_per_vehicle"][v]))
+            cap = distances[v] if v < len(distances) and distances[v] is not None else 300
+            dist_dim.CumulVar(routing.End(v)).SetMax(int(cap))
     
     def _add_order_group_constraints(self, routing, manager, data):
         """Add constraints to keep grouped orders on same vehicle."""
