@@ -18,6 +18,7 @@ from sqlalchemy import (
     Integer,
     String,
     Table,
+    Text,
     Time,
     UniqueConstraint,
 )
@@ -379,7 +380,12 @@ class JobRoute(Base, TimestampMixin):
     vehicle_id = Column("VehicleId", Integer, ForeignKey("Vehicle.Id"), nullable=False)
     total_distance = Column("TotalDistance", Float, nullable=True)
     total_time = Column("TotalTime", Float, nullable=True)
-    folium_html = Column("FoliumHtml", LONGTEXT, nullable=True)
+    # Folium maps are large HTML; MySQL needs LONGTEXT, SQLite only has TEXT.
+    folium_html = Column(
+        "FoliumHtml",
+        Text().with_variant(LONGTEXT, "mysql"),
+        nullable=True,
+    )
 
     job = relationship("Job", back_populates="routes")
     vehicle = relationship("Vehicle")
