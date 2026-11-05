@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 from typing import Optional, Union, List, Dict, Tuple
 from datetime import time
 from src.infrastructure.database import models
@@ -10,34 +10,6 @@ from src.vrp.map_renderer import MapManager
 from src.infrastructure.logging import logging
 from src.infrastructure.exceptions import TMSException
 import sys
-
-
-def resolve_depot_id(db: Session, depot_id: Optional[int]) -> int:
-    """Use the requested depot, or the first active depot if none was sent."""
-    if depot_id is not None:
-        depot = (
-            db.query(models.Location)
-            .filter(
-                models.Location.id == depot_id,
-                models.Location.is_deleted.is_(False),
-            )
-            .first()
-        )
-        if depot:
-            return depot.id
-        logging.warning(f"depot_id={depot_id} was not found; falling back to first depot")
-
-    depot = (
-        db.query(models.Location)
-        .filter(
-            models.Location.location_type == models.LocationType.DEPOT,
-            models.Location.is_deleted.is_(False),
-        )
-        .first()
-    )
-    if not depot:
-        raise TMSException("No depot available. Create a depot before running optimization.", sys)
-    return depot.id
 
 def run_optimization_task(db: Session,request: schemas.OptimizeRequest,job_id: Optional[int]=None):
     job = None
@@ -78,8 +50,6 @@ class Orchestrator:
     def __init__(self, db: Session, request: schemas.OptimizeRequest):
         self.db = db
         self.request = request
-        self.depot_id = resolve_depot_id(db, request.depot_id)
-        logging.info(f"Optimization depot_id: {self.depot_id}")
         (self.free_vehicles, self.fixed_vehicles) = self._split_vehicles()
         
     def optimize_orchestrator(self):
@@ -107,7 +77,7 @@ class Orchestrator:
                     route_location_ids.append(int(r["location_id"]))
                 route_orders = [o for o in orders if o.location_id in route_location_ids]
                 if route_orders:
-                    optimized = self._optimize_single_vehicle_route(vehicle=v, orders=route_orders, depot_id=self.depot_id)
+                    optimized = self._optimize_single_vehicle_route(vehicle=v, orders=route_orders, depot_id=self.request.depot_id)
                     if optimized:
                         predefined_optimized_routes.append(optimized)
                         
@@ -115,7 +85,7 @@ class Orchestrator:
             
             """optimized vehicles not assigned pre routes"""
             if self.free_vehicles and remaining_orders:
-                free_optimized_routes = self._optimize_free_vehicles(orders=remaining_orders, vehicles=self.free_vehicles, depot_id=self.depot_id)
+                free_optimized_routes = self._optimize_free_vehicles(orders=remaining_orders, vehicles=self.free_vehicles, depot_id=self.request.depot_id)
                 
             return predefined_optimized_routes, free_optimized_routes or []
         except Exception as e:
@@ -130,12 +100,9 @@ class Orchestrator:
             selected_vehicle_ids = [v.vehicle_id for v in self.request.vehicles]
             vehicle_route_mapping = {v.vehicle_id:v.predefined_route_id for v in self.request.vehicles if  v.predefined_route_id}
             
-            vehicles = (
-                self.db.query(models.Vehicle)
-                .options(joinedload(models.Vehicle.constraint))
-                .filter(models.Vehicle.id.in_(selected_vehicle_ids))
-                .all()
-            )
+            vehicles = self.db.query(models.Vehicle).filter(
+                models.Vehicle.id.in_(selected_vehicle_ids)
+                ).all()
             
             logging.info(f"Total vehicles for optimization: {len(vehicles)}")
             
@@ -200,7 +167,7 @@ class Orchestrator:
                 )
             return result
         except Exception as e:
-            logging.exception(f"Free vehicles orchestration failed: {e}")
+            logging.error(f"Free vehicles orchestration failed: {e}")
             return []
 
     def _save_job(self, db: Session, job: models.Job, routes_data: Dict):

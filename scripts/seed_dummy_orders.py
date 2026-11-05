@@ -26,7 +26,7 @@ from src.infrastructure.database.models import (
     OrderStatus,
     Priority,
 )
-from src.infrastructure.database.session import SessionLocal, engine
+from src.infrastructure.database.session import SessionLocal
 
 PRIORITIES = [ Priority.MEDIUM]
 TIME_WINDOWS = [
@@ -65,7 +65,6 @@ def seed_orders(count: int, dry_run: bool) -> int:
             print("ERROR: no active customers found. Create customers first.", file=sys.stderr)
             return 1
 
-        print(f"Database: {engine.url}")
         print(f"Found {len(customers)} customers. Creating {count} dummy orders...")
         used_ids: set[str] = set()
         created = 0
