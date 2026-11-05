@@ -232,11 +232,7 @@ function parseExcelRows(workbook) {
   if (rows.length === 0) throw new Error("Excel file is empty");
 
   return rows.map((row, index) => {
-    const shop_code = row.shop_code
-      ? String(row.shop_code).trim()
-      : row.location_code
-        ? String(row.location_code).trim()
-        : null;
+    const shop_code = row.shop_code ? String(row.shop_code).trim() : null;
     if (!shop_code) {
       throw new Error(`Row ${index + 2}: shop_code is required`);
     }
@@ -247,7 +243,6 @@ function parseExcelRows(workbook) {
 
     return {
       shop_code,
-      location_code: shop_code,
       order_id: row.order_id ? String(row.order_id).trim() : null, // may be custom
       po_value: row.po_value ? parseFloat(row.po_value) : null,
       volume: row.volume ? parseFloat(row.volume) : null,
@@ -366,12 +361,11 @@ function setupShopAutocomplete() {
 async function createOrder(data) {
   let payload = { ...data };
 
-  // Resolve shop_id (CSV/Excel uses shop_code; forms use location_code)
-  const locationCode = payload.location_code || payload.shop_code;
-  if (locationCode && !payload.location_id) {
-    const shop = allShopsList.find((s) => s.location_code === locationCode);
+  // Resolve shop_id
+  if (payload.location_code && !payload.location_id) {
+    const shop = allShopsList.find((s) => s.location_code === payload.location_code);
     if (shop) payload.location_id = shop.id;
-    else throw new Error(`Shop "${locationCode}" not found`);
+    else throw new Error(`Shop "${payload.location_code}" not found`);
   }
 
   if (!payload.location_id) throw new Error("Shop not found");
@@ -382,7 +376,6 @@ async function createOrder(data) {
   }
 
   delete payload.location_code;
-  delete payload.shop_code;
 
   const res = await fetch(TMS_API.url("/order"), {
     method: "POST",

@@ -10,6 +10,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
+from sqlalchemy.dialects.mysql import LONGTEXT
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -27,6 +29,13 @@ from src.api.routes.vehicle_constraints.endpoints import router as vehicle_const
 from src.api.routes.vehicles.endpoints import router as vehicles_router
 from src.infrastructure.database.base import Base
 from src.infrastructure.database import models  # noqa: F401  (register tables)
+
+
+@compiles(LONGTEXT, "sqlite")
+def _compile_mysql_longtext_as_text(element, compiler, **kwargs):
+    """``job_routes.folium_html`` is MySQL LONGTEXT. SQLite has no such type."""
+    return "TEXT"
+
 
 engine = create_engine(
     "sqlite://",

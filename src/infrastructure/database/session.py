@@ -66,12 +66,17 @@ def _tables_to_drop(stale_physical_names: set[str]) -> set[str]:
 
 
 def ensure_schema(bind=None) -> None:
-    """Create missing tables and rebuild leftover tables from older schemas."""
+    """Create missing tables. On SQLite, also rebuild leftover tables from older schemas."""
     # Import models here so table metadata is registered without a circular import.
     from src.infrastructure.database.models import Location as _Location  # noqa: F401
 
     bind = bind or engine
     Base.metadata.create_all(bind=bind)
+
+    # SQLite ignores table-name case, so an old ``orders`` table blocks ``Orders``.
+    # MySQL (local) already has the current schema — do not drop tables there.
+    if bind.dialect.name != "sqlite":
+        return
 
     stale = _stale_model_tables(bind)
     if not stale:
