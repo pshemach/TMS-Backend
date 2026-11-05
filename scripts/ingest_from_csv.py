@@ -30,7 +30,7 @@ from src.infrastructure.database.models import (
     LocationType,
     MatrixStatus,
 )
-from src.infrastructure.database.session import SessionLocal
+from src.infrastructure.database.session import SessionLocal, engine
 
 DEFAULT_CSV_DIR = Path("data/csv")
 MASTER_GPS_FILE = "master_gps.csv"
@@ -353,7 +353,8 @@ def main():
             print(f"ERROR: file not found: {p}", file=sys.stderr)
             sys.exit(1)
 
-    print(f"{'DRY RUN - ' if args.dry_run else ''}Loading CSVs from {args.csv_dir.resolve()}\n")
+    print(f"{'DRY RUN - ' if args.dry_run else ''}Loading CSVs from {args.csv_dir.resolve()}")
+    print(f"Database: {engine.url}\n")
 
     print(f"Reading {gps_path.name} ...")
     locations = load_locations(gps_path)
