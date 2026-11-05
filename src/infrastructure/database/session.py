@@ -5,6 +5,7 @@ from sqlalchemy.orm import sessionmaker
 
 from src.infrastructure import config
 from src.infrastructure.config import ensure_directories
+from src.infrastructure.database.base import Base
 
 ensure_directories()
 
@@ -20,6 +21,17 @@ engine = create_engine(
 )
 
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
+
+def ensure_schema() -> None:
+    """Create any missing tables. Safe to call more than once."""
+    # Import models here so table metadata is registered without a circular import.
+    from src.infrastructure.database.models import Location as _Location  # noqa: F401
+
+    Base.metadata.create_all(bind=engine)
+
+
+ensure_schema()
 
 
 def get_db():
