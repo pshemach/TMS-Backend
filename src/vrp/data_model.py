@@ -8,22 +8,24 @@ from src.matrix.manager import DistanceMatrixManager
 class ORDataModel:
     def __init__(self, db: Session, vehicles: List[models.Vehicle], orders: List[models.Order], use_time_windows: bool=False, depot_id: int=1):
         self.db = db
+        if depot_id is None:
+            raise ValueError("depot_id is required for routing")
         self.depot_id = depot_id
-        self.orders = orders
+        self.orders = [o for o in orders if o.location_id is not None]
         
-        self.location_ids = [o.location_id for o in orders]
-        self.all_nodes = [self.depot_id] + self.location_ids  # depot = 1
+        self.location_ids = [o.location_id for o in self.orders]
+        self.all_nodes = [self.depot_id] + self.location_ids
         
         self.distance_matrix, self.time_matrix = self._get_matrix(all_nodes=self.all_nodes)
-        self.use_time = self._use_time_window(orders) or use_time_windows
+        self.use_time = self._use_time_window(self.orders) or use_time_windows
         self.max_distance_per_vehicle, self.max_visits_per_vehicle = self._get_vehicle_constrains(vehicles=vehicles)
-        self.penalties = self._build_penalties(orders=orders)
-        self.time_windows = self._build_time_windows(orders=orders, use_tw=self.use_time)
+        self.penalties = self._build_penalties(orders=self.orders)
+        self.time_windows = self._build_time_windows(orders=self.orders, use_tw=self.use_time)
 
-        self.order_groups = self._fetch_order_groups(orders)
+        self.order_groups = self._fetch_order_groups(self.orders)
         self.geo_constrains = self._fetch_geo_constraints(self.db)
         
-        self.order_map = self._build_order_map(orders)
+        self.order_map = self._build_order_map(self.orders)
         
         self.matrix = self.time_matrix if self.use_time else self.distance_matrix
     

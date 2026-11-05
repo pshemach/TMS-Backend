@@ -145,6 +145,8 @@
     if (!depotSelect.value && allDepotsForOptimization.length > 0) {
       depotSelect.value = String(allDepotsForOptimization[0].id);
     }
+    depotSelect.onchange = updateOptimizationButton;
+    updateOptimizationButton();
   }
 
   // Render vehicles table with checkboxes and route dropdowns
@@ -398,8 +400,10 @@
     const hasVehicles = selectedVehiclesForOptimization.size > 0;
     const hasOrders = window.optimizationOrders.length > 0;
 
+    const depotSelect = document.getElementById("optimizationDepotSelect");
+    const hasDepot = Boolean(depotSelect && depotSelect.value);
     if (btn) {
-      btn.disabled = !hasVehicles || !hasOrders;
+      btn.disabled = !hasVehicles || !hasOrders || !hasDepot;
     }
   }
 
@@ -412,7 +416,11 @@
       // use_time_windows removed from UI; backend handles it
       const depotSelect = document.getElementById("optimizationDepotSelect");
       const depotId =
-        depotSelect && depotSelect.value ? parseInt(depotSelect.value) : null;
+        depotSelect && depotSelect.value ? parseInt(depotSelect.value, 10) : null;
+      if (!depotId) {
+        toast("Select a depot before running optimization", "warning");
+        return;
+      }
 
       // Prepare payload
       const vehicles = Array.from(
